@@ -1,32 +1,110 @@
 /*! \file */ //Copyright 2011-2018 Tyler Gilbert; All Rights Reserved
 
+#include <cmath>
 #include <sapi/fmt.hpp>
 #include <sapi/fs.hpp>
 #include "Util.hpp"
 
-void Util::show_icon_file(const String & path, sg_size_t canvas_size){
+void Util::show_icon_file(
+		File::SourcePath input_file,
+		File::DestinationPath output_file,
+		sg_size_t canvas_size,
+		u16 downsample_size
+		){
+
 	File icon_file;
 	Printer p;
+	bool is_write_bmp = false;
+	Bitmap bmp_output;
 
-	if( icon_file.open(path, OpenFlags::read_only()) < 0 ){
+	if( !output_file.argument().is_empty() ){
+		is_write_bmp = true;
+	}
+
+	if( icon_file.open(
+			 input_file.argument(),
+			 OpenFlags::read_only()
+			 ) < 0 ){
 		printf("failed to open vector icon file\n");
 		return;
 	}
 
-	Svic icon_collection(path);
-
+	Svic icon_collection(input_file.argument());
 	Bitmap canvas(Area(canvas_size, canvas_size));
+
+	Area downsampled_area(
+				downsample_size, downsample_size
+				);
+
+	Area canvas_downsampled_area;
+	canvas_downsampled_area.set_width( (canvas.width() + downsample_size/2) / downsample_size );
+	canvas_downsampled_area.set_height( (canvas.height() + downsample_size/2) / downsample_size );
+	Bitmap canvas_downsampled(canvas_downsampled_area);
 	VectorMap map(canvas);
 
 	p.message("%d icons in collection", icon_collection.count());
 
+	u32 count = (sqrtf(icon_collection.count()) + 0.5f);
+
+	if( is_write_bmp ){
+		bmp_output.allocate(
+					Area(
+						canvas_downsampled_area.width() * count,
+						canvas_downsampled_area.height() * count
+						)
+					);
+		bmp_output.clear();
+	}
+
 	for(u32 i=0; i < icon_collection.count(); i++){
+
 		p.key("name", icon_collection.name_at(i));
 		VectorPath vector_path = icon_collection.at(i);
 		vector_path << canvas.get_viewable_region();
 		canvas.clear();
-		sgfx::Vector::draw(canvas, vector_path, map);
-		p.open_object("icon") << canvas << p.close();
+		sgfx::Vector::draw(
+					canvas,
+					vector_path,
+					map
+					);
+
+		if( downsample_size > 1 ){
+			canvas_downsampled.downsample_bitmap(
+						canvas,
+						downsampled_area
+						);
+			p.open_object("icon") << canvas_downsampled << p.close();
+		} else {
+			p.open_object("icon") << canvas << p.close();
+		}
+
+		if( is_write_bmp ){
+			bmp_output.draw_sub_bitmap(
+						Point(
+							(i % count) * canvas_downsampled_area.width(),
+							i / count * canvas_downsampled_area.height()
+						),
+						canvas_downsampled,
+						Region(Point(0,0), canvas_downsampled_area)
+						);
+		}
+
+	}
+
+	if( is_write_bmp ){
+
+		Palette bmp_pallete;
+
+		bmp_pallete
+				.set_bits_per_pixel(1)
+				.fill_gradient_gray();
+
+
+		fmt::Bmp::save(
+					output_file.argument(),
+					bmp_output,
+					bmp_pallete
+					);
 	}
 
 }

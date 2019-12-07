@@ -46,6 +46,10 @@ public:
 			File::DestinationPath destination_folder
 			);
 
+	void set_output_json(bool value = true ){
+		m_is_output_json = value;
+	}
+
 	void set_map_output_file(const String & path){
 		m_bmp_font_generator.set_map_output_file(path);
 	}
@@ -103,6 +107,7 @@ private:
 	float m_scale;
 	int m_scale_sign_y;
 	u16 m_point_size;
+	bool m_is_output_json;
 	var::Vector<sg_vector_path_description_t> m_vector_path_icon_list;
 	var::Vector<sg_font_char_t> m_font_character_list;
 

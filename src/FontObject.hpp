@@ -37,6 +37,11 @@ public:
 
 	const String & character_set() const { return m_character_set; }
 
+protected:
+	static const String map_suffix(){
+		return "-map.json";
+	}
+
 private:
 	u8 m_bits_per_pixel;
 	bool m_is_generate_map;

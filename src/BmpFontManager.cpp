@@ -60,7 +60,7 @@ int BmpFontManager::convert_directory(const String & dir_path, bool overwrite){
 int BmpFontManager::generate_map(const String & path){
 	String map_path;
 
-	map_path = FileInfo::no_suffix(path) + "-map.txt";
+	map_path = FileInfo::no_suffix(path) + map_suffix();
 	populate_lists_from_font(path);
 	m_generator.set_bits_per_pixel(bits_per_pixel());
 	m_generator.set_generate_map();
@@ -81,7 +81,7 @@ int BmpFontManager::convert_font(const String & path){
 	definition_path << path << ".txt";
 	bmp_path << path << ".bmp";
 	destintation_path << path;
-	map_path << path << "-map.txt";
+	map_path << path << map_suffix();
 
 	if( definition_file.open(
 			 definition_path,

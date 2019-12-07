@@ -62,7 +62,7 @@ int main(int argc, char * argv[]){
 
 	if( pour_size.to_integer() == 0 ){
 		Ap::printer().message("using 4 pixel grid pour size");
-		pour_size = "4";
+		pour_size = "3";
 	}
 
 	String downsample_size = cli.get_option(
@@ -89,6 +89,12 @@ int main(int argc, char * argv[]){
 				"map",
 				Cli::Description("generate an map file as well as the font files (or specify a path to a map to convert)")
 				) == "true";
+
+	bool is_json = cli.get_option(
+				"json",
+				Cli::Description("generate a json file of the SVG input")
+				) == "true";
+
 
 	String characters = cli.get_option(
 				"characters",
@@ -130,6 +136,7 @@ int main(int argc, char * argv[]){
 		Ap::printer().key("input", input);
 		Ap::printer().key("output", output.is_empty() ? "<auto>" : output.cstring() );
 		Ap::printer().key("canvas", canvas_size);
+		Ap::printer().key("downsample", downsample_size);
 		Ap::printer().key("pour", pour_size);
 		Ap::printer().key("overwrite", is_overwrite ? "true" : "false");
 		Ap::printer().key("characters", characters.is_empty() ? "<ascii>" : characters.cstring() );
@@ -143,13 +150,29 @@ int main(int argc, char * argv[]){
 
 		Ap::printer().message("action=show");
 
+
+
 		if( input_suffix == "svic" ){
 			Ap::printer().message(
 						"Show icon file %s with canvas size %d",
 						input.capacity(),
 						canvas_size.to_integer()
 						);
-			Util::show_icon_file(input, canvas_size.to_integer());
+
+			if( output.is_empty() == false ){
+				if( FileInfo::suffix(output) != "bmp" ){
+					Ap::printer().error(
+								"output must be a .bmp file"
+								);
+				}
+			}
+
+			Util::show_icon_file(
+						File::SourcePath(input),
+						File::DestinationPath(output),
+						canvas_size.to_integer(),
+						downsample_size.to_integer()
+						);
 		} else {
 			Ap::printer().message(
 						"Show font file %s with details %d",
@@ -176,7 +199,10 @@ int main(int argc, char * argv[]){
 		}
 
 		if( input_suffix == "svg" || is_icon ){
+
 			SvgFontManager svg_font;
+
+			svg_font.set_output_json(is_json);
 			svg_font.set_pour_grid_size( pour_size.to_integer() );
 			svg_font.set_canvas_size( canvas_size.to_integer() );
 			svg_font.set_generate_map(is_map);
@@ -208,7 +234,7 @@ int main(int argc, char * argv[]){
 							File::DestinationPath(output)
 							);
 			}
-		} else if( input_suffix == "txt" ){
+		} else if( input_suffix == "json" ){
 			//map file input
 			Ap::printer().message("generating sbf font from map file");
 			BmpFontGenerator bmp_font_generator;

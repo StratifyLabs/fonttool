@@ -30,9 +30,6 @@ private:
 	int generate_map_file(const sg_font_header_t & header, const var::Vector<Bitmap> & master_canvas_list);
 
 	Region find_space_on_canvas(Bitmap & canvas, Area dimensions);
-	String parse_map_line(const var::String & title,const String & line);
-	String get_map_value(const var::Vector<var::String> & lines, const var::String & title);
-
 	var::String m_map_output_file;
 	bool m_is_ascii;
 	var::Vector<Bitmap> build_master_canvas(const sg_font_header_t & header);

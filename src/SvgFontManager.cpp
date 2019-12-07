@@ -89,12 +89,20 @@ int SvgFontManager::process_icons(
 					input_file.cstring()
 					);
 
+
 		JsonDocument json_document;
 		JsonObject top = json_document.load(
 					JsonDocument::XmlFilePath(
 						input_file
 						)
 					).to_object();
+
+		if( m_is_output_json ){
+			Reference( JsonDocument().stringify(top) ).save(
+						FileInfo::no_suffix(input_file) + ".json",
+						Reference::IsOverwrite(true)
+						);
+		}
 
 		JsonObject svg_icon = top.at("svg").to_object();
 
@@ -116,7 +124,7 @@ int SvgFontManager::process_icons(
 					svg_icon.at("@data-icon").to_string();
 
 			if( name.is_empty() ){
-				name.format("unnamed-icon");
+				name = FileInfo::base_name(input_file);
 			}
 
 			printer().message(
@@ -141,7 +149,9 @@ int SvgFontManager::process_icons(
 	return 0;
 }
 
-int SvgFontManager::process_svg_icon(const JsonObject & object){
+int SvgFontManager::process_svg_icon(
+		const JsonObject & object
+		){
 
 	printer().open_object("svg.convert");
 	printer().open_object("json", sys::Printer::DEBUG);
@@ -161,7 +171,7 @@ int SvgFontManager::process_svg_icon(const JsonObject & object){
 	if( view_box.is_empty() == false ){
 		m_bounds = parse_bounds(view_box.cstring());
 		m_canvas_dimensions = calculate_canvas_dimension(m_bounds, m_canvas_size);
-		printer().open_object("SVG bounds") << m_bounds << printer().close();
+		printer().open_object("bounds") << m_bounds << printer().close();
 		printer().open_object("Canvas Dimensions") << m_canvas_dimensions << printer().close();
 	} else {
 		printer().warning("Failed to find bounding box");
@@ -198,7 +208,14 @@ int SvgFontManager::process_svg_icon(const JsonObject & object){
 				);
 
 	printer().open_object("canvas size") << canvas.area() << printer().close();
+	printer().open_object(
+				"canvas",
+				canvas.area().width() > 128 ?
+					Printer::DEBUG :
+					Printer::INFO
+					);
 	printer() << canvas;
+	printer().close_object();
 
 	printer().debug("finished icon");
 	printer().close_object();
@@ -301,14 +318,12 @@ int SvgFontManager::process_font(
 	m_bmp_font_generator.set_generate_map( is_generate_map() );
 	if( is_generate_map() ){
 		String map_file;
-		map_file << output_name << "-map.txt";
+		map_file << output_name << map_suffix();
 		m_bmp_font_generator.set_map_output_file(map_file);
 	}
 
 	m_bmp_font_generator.generate_font_file(output_name);
-
 	printer().message("Created %s", output_name.cstring());
-
 	return 0;
 }
 
@@ -496,7 +511,11 @@ int SvgFontManager::process_glyph(const JsonObject & glyph){
 
 
 		active_canvas_downsampled.clear();
-		active_canvas_downsampled.downsample_bitmap(active_canvas, m_downsample);
+		active_canvas_downsampled
+				.downsample_bitmap(
+					active_canvas,
+					m_downsample
+					);
 
 		//find region inhabited by character
 
@@ -849,9 +868,8 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::convert_svg_path(
 					.set_thickness(1)
 					.set_fill(true)
 					);
+
 		VectorMap map(canvas);
-
-
 		sgfx::VectorPath vector_path;
 		vector_path << elements << canvas.get_viewable_region();
 
@@ -881,7 +899,7 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::convert_svg_path(
 		sgfx::Vector::draw(canvas, vector_path, map);
 		canvas.set_pen(Pen().set_color(0));
 		for(u32 i=0; i < fill_points.count(); i++){
-			printer().info("pour at %d,%d", fill_points.at(i).x, fill_points.at(i).y);
+			printer().message("pour at %d,%d", fill_points.at(i).x, fill_points.at(i).y);
 			canvas.draw_pixel(fill_points.at(i));
 		}
 		Region active_region = canvas.calculate_active_region();
@@ -889,17 +907,16 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::convert_svg_path(
 		Bitmap active_bitmap( active_region.area() );
 		active_bitmap.clear();
 		active_bitmap.draw_sub_bitmap(Point(), canvas, active_region);
-		//canvas = active_bitmap;
-
-
-
 	}
 
 	return elements;
 }
 
 
-var::Vector<sg_vector_path_description_t> SvgFontManager::process_svg_path(const String & path){
+var::Vector<sg_vector_path_description_t> SvgFontManager::process_svg_path(
+		const String & path
+		){
+
 	String modified_path;
 	bool is_command;
 	bool has_dot = false;
