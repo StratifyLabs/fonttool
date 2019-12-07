@@ -10,8 +10,10 @@ int BmpFontGenerator::generate_font_file(const String & destination){
 	u32 area;
 	bool is_destination_valid = destination.is_empty() == false;
 	
-	String output_name;
-	output_name << destination << ".sbf";
+	String output_name = destination;
+	if( FileInfo::suffix(destination).is_empty() ){
+		output_name << ".sbf";
+	}
 	
 	printer().info("Create output font file '%s'", output_name.cstring());
 
@@ -77,7 +79,6 @@ int BmpFontGenerator::generate_font_file(const String & destination){
 		printer().close_object();
 	}
 	
-	printer().debug("write header to file");
 	
 	printer().info("header bits_per_pixel %d", header.bits_per_pixel);
 	printer().info("header max_word_width %d", header.max_word_width);
@@ -87,11 +88,23 @@ int BmpFontGenerator::generate_font_file(const String & destination){
 	printer().info("header canvas_width %d", header.canvas_width);
 	printer().info("header canvas_height %d", header.canvas_height);
 	
-	if( is_destination_valid && font_file.write(header) < 0 ){
+	printer().debug(
+				"write header to file at %d",
+				font_file.location()
+				);
+	if( is_destination_valid && font_file.write(header) != sizeof(header) ){
+		printer().error(
+					"failed to write header to file (%d, %d)",
+					font_file.return_value(),
+					font_file.error_number()
+					);
 		return -1;
 	}
 
-	printer().debug("write kerning pairs to file");
+	printer().debug(
+				"write kerning pairs to file at %d",
+				font_file.location()
+				);
 	
 	printer().open_array("kerning pairs", Printer::DEBUG);
 	
@@ -102,19 +115,37 @@ int BmpFontGenerator::generate_font_file(const String & destination){
 							 kerning_pair_list().at(i).unicode_first,
 							 kerning_pair_list().at(i).unicode_second,
 							 kerning_pair_list().at(i).horizontal_kerning);
-		if( is_destination_valid && font_file.write(kerning_pair) != (int)kerning_pair.size() ){
-			printer().error("failed to write kerning pair");
+		if( is_destination_valid && font_file.write(kerning_pair_list().at(i)) != sizeof(sg_font_kerning_pair_t) ){
+			printer().error(
+						"failed to write kerning pair (%d,%d)",
+						font_file.return_value(),
+						font_file.error_number()
+						);
 			return -1;
 		}
 	}
 	printer().close_array();
+
+	printer().debug(
+				"write characters defs to file at %d",
+				font_file.location()
+				);
+
+	character_list().sort(
+				[](const void * a, const void * b){
+		const sg_font_char_t * object_a = (const sg_font_char_t*)a;
+		const sg_font_char_t * object_b = (const sg_font_char_t*)b;
+		if( object_a->id < object_b->id ){ return -1; }
+		if( object_a->id > object_b->id ){ return 1; }
+		return 1;
+	}
+				);
+
 	
 	//write characters in order
-	printer().info("write characters to file");
-	for(u32 i = 0; i < 65535; i++){
-		for(u32 j = 0; j < character_list().count(); j++){
-			
-			if( character_list().at(j).id == i ){
+	//for(u32 i = 0; i < 65535; i++){
+		for(u32 j = 0; j < character_list().count(); j++){			
+			//if( character_list().at(j).id == i ){
 				printer().debug("write character %d to file on %d: %d,%d %dx%d at %d",
 									 character_list().at(j).id,
 									 character_list().at(j).canvas_idx,
@@ -123,30 +154,38 @@ int BmpFontGenerator::generate_font_file(const String & destination){
 									 character_list().at(j).width,
 									 character_list().at(j).height,
 									 font_file.seek(0, File::CURRENT));
-				if( is_destination_valid && font_file.write(character_list().at(j)) != sizeof(sg_font_char_t) ){
+				if( is_destination_valid &&
+					 font_file.write(character_list().at(j)) != sizeof(sg_font_char_t) ){
 					printer().error("failed to write kerning pair");
 					return -1;
 				}
-				break;
-			}
+				//break;
+			//}
 		}
-	}
+	//}
 	
 	//write the master canvas
-	printer().info("write master canvas to file");
+	printer().debug(
+				"write master canvas to file at %d",
+				font_file.location()
+				);
+
 	for(u32 i=0; i < master_canvas_list.count(); i++){
-		printer().debug("write master canvas %d to file at %d",
+		printer().debug("write master canvas %d (%d) to file at %d",
 							 i,
+							 master_canvas_list.at(i).size(),
 							 font_file.seek(0, File::CURRENT)
 							 );
-		if( is_destination_valid && font_file.write(master_canvas_list.at(i)) != (int)master_canvas_list.at(i).size() ){
+		if( is_destination_valid &&
+			 font_file.write(
+				 master_canvas_list.at(i)
+				 ) != (int)master_canvas_list.at(i).size() ){
 			printer().error("Failed to write master canvas %d", i);
 			return -1;
 
 		}
 	}
 
-	
 	if( is_generate_map() ){
 		printer().info("generate map file '%s'", m_map_output_file.cstring());
 		generate_map_file(header, master_canvas_list);
@@ -302,7 +341,10 @@ String BmpFontGenerator::parse_map_line(const var::String & title, const String 
 	return tokens.at(1);
 }
 
-String BmpFontGenerator::get_map_value(const var::Vector<var::String> & lines, const var::String & title){
+String BmpFontGenerator::get_map_value(
+		const var::Vector<var::String> & lines,
+		const var::String & title
+		){
 	
 	for(u32 i = 0; i < lines.count(); i++){
 		Tokenizer tokens(lines.at(i), Tokenizer::Delimeters(":\n"));
@@ -324,7 +366,7 @@ int BmpFontGenerator::import_map(const String & map){
 	File map_file;
 	String path;
 	
-	path << map << "-map.txt";
+	path = map;
 	
 	if( map_file.open(path, OpenFlags::read_only()) < 0 ){
 		printer().error("Failed to open map file %s", path.cstring());
@@ -426,13 +468,13 @@ int BmpFontGenerator::import_map(const String & map){
 	}
 	
 	Vector<String> character_lines;
-	character_list().resize(0);
+	character_list().clear();
 	
 	do {
 		sg_font_char_t character;
 		line_number++;
 		
-		character_lines.resize(0);
+		character_lines.clear();
 		
 		while( ((line = map_file.gets()).find("----") == String::npos) && (line.is_empty() == false) ){
 			line.replace("\n");
@@ -441,8 +483,14 @@ int BmpFontGenerator::import_map(const String & map){
 		}
 		
 		if( character_lines.count() > 0 ){
-			character.id = get_map_value(character_lines, "id").at(0);
-			printer().debug("loaded %d lines for character %d", character_lines.count(), character.id);
+			character.id = get_map_value(character_lines, "id").to_integer();
+
+			printer().debug(
+						"loaded %d lines for character %d",
+						character_lines.count(),
+						character.id
+						);
+
 			character.width = get_map_value(character_lines, "width").to_integer();
 			character.height = get_map_value(character_lines, "height").to_integer();
 			character.advance_x = get_map_value(character_lines, "advance_x").to_integer();

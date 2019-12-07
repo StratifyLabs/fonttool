@@ -57,5 +57,27 @@ fonttool --action=convert --input=fonts/OpenSansCondensed-Light.svg --output=ass
 Once the editing is done, you can generate a font from the map file.
 
 ```
-fonttool --action=convert --input=fonts/OpenSansCondensed-Light-map.txt --output=assets
+fonttool --action=convert --input=fonts/OpenSansCondensed-Light-15-map.txt --output=assets
+```
+
+
+# Testing Shortcuts
+
+Icons:
+
+```
+fonttool --action=convert --icon --input=icons --output=assets
+fonttool --action=show --input=assets/icons.svic
+fonttool --action=convert --icon --input=icons/adjust-solid.svg --output=assets/adjust-solid.svic
+fonttool --action=show --input=assets/adjust-solid.svic
+fonttool --action=show --input=assets/adjust-solid.svic --canvas=32
+```
+
+Fonts:
+
+
+```
+fonttool --action=convert --input=fonts/OpenSansCondensed-Light.svg --output=assets --map
+fonttool --action=show --input=assets/OpenSansCondensed-Light-15.sbf
+fonttool --action=convert --input=assets/OpenSansCondensed-Light-15-map.txt --output=assets
 ```

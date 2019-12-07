@@ -50,7 +50,11 @@ int SvgFontManager::process_icons(
 		}
 
 		if( File::get_info(destination_path.argument()).is_directory() ){
-			output_file_path << "/" << input_base_name << ".svic";
+			output_file_path
+					<< destination_path.argument()
+					<< "/"
+					<< input_base_name
+					<< ".svic";
 		} else {
 			output_file_path = destination_path.argument();
 		}
@@ -216,16 +220,14 @@ int SvgFontManager::process_font(
 				JsonDocument::XmlFilePath(source_file_path.argument())
 				).to_object();
 
-	printer().message(
-				"loaded svg file %s",
-				source_file_path.argument().cstring()
-				);
-
-	printer() << font_object;
-
 
 	JsonObject svg_object = font_object.at("svg").to_object();
+
 	if( svg_object.is_empty() ){
+		printer().debug(
+					"loaded svg file %s",
+					source_file_path.argument().cstring()
+					);
 		printer().error("no svg object found");
 		return -1;
 	}
@@ -239,15 +241,13 @@ int SvgFontManager::process_font(
 	JsonObject font_face = font.at("font-face").to_object();
 	JsonObject missing_glyph = font.at("missing-glyph").to_object();
 
-
-	printer().message("metadata: %s", metadata.cstring());
-	printer().message("font: %s", font.at("@id").to_string().cstring());
-	printer().message("font-face: %s", font_face.at("name").to_string().cstring());
-	printer().message("fontFamily: %s", font_face.at("@font-family").to_string().cstring());
-	printer().message("fontStretch: %s", font_face.at("@font-stretch").to_string().cstring());
+	printer().key("metadata", metadata);
+	printer().key("font", font.at("@id").to_string());
+	printer().key("fontFamily", font_face.at("@font-family").to_string());
+	printer().key("fontStretch", font_face.at("@font-stretch").to_string());
 	u16 units_per_em = font_face.at("@units-per-em").to_string().to_integer();
 
-	printer().message("unitsPerEm: %d", units_per_em);
+	printer().key("unitsPerEm", "%d", units_per_em);
 
 	m_scale = (SG_MAP_MAX*1.0f) / (units_per_em);
 
@@ -268,20 +268,23 @@ int SvgFontManager::process_font(
 	m_canvas_origin = calculate_canvas_origin(m_bounds, m_canvas_dimensions);
 	printer().open_object("SVG bounds") << m_bounds << printer().close();
 
-	m_point_size = 1.0f * m_canvas_dimensions.height() * units_per_em / m_bounds.area().height() * SG_MAP_MAX / (SG_MAX);
-
-	printer().message(
-				"missingGlyph: %s",
-				missing_glyph.at("name").to_string().cstring()
-				);
+	m_point_size =
+			1.0f * m_canvas_dimensions.height() * units_per_em / m_bounds.area().height() * SG_MAP_MAX / (SG_MAX);
 
 	printer().message("Glyph count %ld", glyphs.count());
+
+
+	printer().key(
+				"characterSet", character_set().is_empty() ?
+					"<all>" :
+					character_set().cstring()
+					);
 
 	for(j=0; j < glyphs.count();j++){
 		//d is the path
 		JsonObject glyph = glyphs.at(j).to_object();
 		//if( name == "glyph" ){
-			process_glyph(glyph);
+		process_glyph(glyph);
 		//} else if( name == "hkern" ){
 		//	JsonObject kerning = glyphs.at(j).to_object().at("attributes").to_object();
 		//	process_hkern(kerning);

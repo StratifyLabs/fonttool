@@ -97,6 +97,7 @@ int main(int argc, char * argv[]){
 
 	if( characters.is_empty() ){
 		characters = Font::ascii_character_set();
+		characters.erase(String::Position(0), String::Length(1));
 	}
 
 	bpp = cli.get_option(
@@ -136,10 +137,13 @@ int main(int argc, char * argv[]){
 		Ap::printer().close_object();
 	}
 
+	String input_suffix = FileInfo::suffix(input);
+
 	if( action == "show" ){
 
 		Ap::printer().message("action=show");
-		if( is_icon ){
+
+		if( input_suffix == "svic" ){
 			Ap::printer().message(
 						"Show icon file %s with canvas size %d",
 						input.capacity(),
@@ -149,7 +153,7 @@ int main(int argc, char * argv[]){
 		} else {
 			Ap::printer().message(
 						"Show font file %s with details %d",
-						input.capacity(),
+						input.cstring(),
 						is_details
 						);
 			Util::show_file_font(input, is_details);
@@ -171,21 +175,7 @@ int main(int argc, char * argv[]){
 			return 1;
 		}
 
-		String suffix;
-		suffix = FileInfo::suffix(input);
-
-		if( output.is_empty() ){
-			if( File::get_info(input).is_directory() ){
-				output = input;
-			} else {
-				output = FileInfo::parent_directory(input);
-			}
-			Ap::printer().message("output updated to %s", output.cstring());
-		} else {
-			Ap::printer().message("output specified as %s", output.cstring());
-		}
-
-		if( suffix == "svg" || is_icon ){
+		if( input_suffix == "svg" || is_icon ){
 			SvgFontManager svg_font;
 			svg_font.set_pour_grid_size( pour_size.to_integer() );
 			svg_font.set_canvas_size( canvas_size.to_integer() );
@@ -200,7 +190,7 @@ int main(int argc, char * argv[]){
 			if( is_icon ){
 				svg_font.set_flip_y(false);
 				Ap::printer().message(
-							"convert folder %s/*.json to icons",
+							"convert folder %s/*.svg to icons",
 							input.cstring()
 							);
 
@@ -209,7 +199,7 @@ int main(int argc, char * argv[]){
 							File::DestinationPath(output)
 							);
 			} else {
-				//json file with a converted TTF
+				//svg file with a converted TTF
 				Ap::printer().message("convert font file");
 				svg_font.set_character_set(characters);
 				svg_font.set_flip_y(true);
@@ -218,16 +208,21 @@ int main(int argc, char * argv[]){
 							File::DestinationPath(output)
 							);
 			}
-		} else if( suffix == "txt" ){
+		} else if( input_suffix == "txt" ){
 			//map file input
 			Ap::printer().message("generating sbf font from map file");
 			BmpFontGenerator bmp_font_generator;
 			if( bmp_font_generator.import_map(input) == 0 ){
+
+				if( File::get_info(output).is_directory() ){
+					output << "/" << FileInfo::base_name(input);
+				}
+
 				if( bmp_font_generator.generate_font_file(output) < 0 ){
 					return 1;
 				}
 			}
-		} else if( suffix == "bmp" ){
+		} else if( input_suffix == "bmp" ){
 
 			Ap::printer().message(
 						"generating sbf font from bmp/definition file"
@@ -243,9 +238,8 @@ int main(int argc, char * argv[]){
 						FileInfo::no_suffix(input)
 						);
 			exit(0);
-		} else if( suffix == "sbf" ){
+		} else if( input_suffix == "sbf" ){
 			//generate a map file from the sbf file
-
 			Ap::printer().message(
 						"generate map file from sbf font"
 						);

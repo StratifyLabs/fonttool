@@ -55,10 +55,10 @@ void Util::clean_path(const String & path, const String & suffix){
 void Util::show_file_font(const String & path, bool is_details){
 
 	FileFont ff;
-	Ap::printer().info("Show font: %s\n", path.cstring());
+	Ap::printer().info("Show font %s", path.cstring());
 
 	if( ff.set_file(path) < 0 ){
-		printf("Failed to open font: '%s'\n", path.cstring());
+		printf("Failed to open font %s", path.cstring());
 		perror("Open failed");
 		return;
 	}
@@ -68,7 +68,10 @@ void Util::show_file_font(const String & path, bool is_details){
 	if( is_details ){
 		File f;
 
-		if( f.open(path, OpenFlags::read_only()) < 0 ){
+		if( f.open(
+				 path,
+				 OpenFlags::read_only()
+				 ) < 0 ){
 			Ap::printer().error("Failed to open file '%s'", path.cstring());
 			return;
 		}
@@ -79,6 +82,21 @@ void Util::show_file_font(const String & path, bool is_details){
 			return;
 		}
 
+		printer().open_object("header");
+		{
+			printer().key("version", "0x%04X", header.version);
+			printer().key("size", "%d", header.size);
+			printer().key("characterCount", "%d", header.character_count);
+			printer().key("kerningPairCount", "%d", header.kerning_pair_count);
+			printer().key("maxWordWidth", "%d", header.max_word_width);
+			printer().key("maxHeight", "%d", header.max_height);
+			printer().key("bitsPerPixel", "%d", header.bits_per_pixel);
+			printer().key("canvasWidth", "%d", header.canvas_width);
+			printer().key("canvasHeight", "%d", header.canvas_height);
+			printer().close_object();
+		}
+
+
 		Vector<sg_font_kerning_pair_t> kerning_pairs;
 		for(u32 i=0; i < header.kerning_pair_count; i++){
 			sg_font_kerning_pair_t pair;
@@ -88,30 +106,6 @@ void Util::show_file_font(const String & path, bool is_details){
 			}
 			kerning_pairs.push_back(pair);
 		}
-
-		Vector<sg_font_char_t> characters;
-		for(u32 i=0; i < header.character_count; i++){
-			sg_font_char_t character;
-			printer().debug("read character from %d", f.seek(0, File::CURRENT));
-			if( f.read(character) != sizeof(sg_font_char_t) ){
-				Ap::printer().error("Failed to read kerning pair");
-				return;
-			}
-			printer().debug("push character %d", character.id);
-			characters.push_back(character);
-		}
-
-		Ap::printer().open_object("header");
-		Ap::printer().key("version", "0x%X", header.version);
-		Ap::printer().key("character_count", "%d", header.character_count);
-		Ap::printer().key("max_word_width", "%d", header.max_word_width);
-		Ap::printer().key("max_height", "%d", header.max_height);
-		Ap::printer().key("bits_per_pixel", "%d", header.bits_per_pixel);
-		Ap::printer().key("size", "%d", header.size);
-		Ap::printer().key("kerning_pair_count", "%d", header.kerning_pair_count);
-		Ap::printer().key("canvas_width", "%d", header.canvas_width);
-		Ap::printer().key("canvas_height", "%d", header.canvas_height);
-		Ap::printer().close_object();
 
 		if( header.kerning_pair_count > 0 ){
 			Ap::printer().open_array("kerning pairs");
@@ -127,10 +121,26 @@ void Util::show_file_font(const String & path, bool is_details){
 			Ap::printer().info("no kerning pairs present");
 		}
 
-		Ap::printer().open_array("characters");
+		Vector<sg_font_char_t> characters;
+		for(u32 i=0; i < header.character_count; i++){
+			sg_font_char_t character;
+			printer().debug("read character from %d", f.seek(0, File::CURRENT));
+			if( f.read(character) != sizeof(sg_font_char_t) ){
+				Ap::printer().error(
+							"Failed to read character at %d (%d, %d)",
+							i,
+							f.return_value(),
+							f.error_number()
+							);
+				continue;
+			}
+			printer().debug("push character %d", character.id);
+			characters.push_back(character);
+		}
+
+		Ap::printer().open_object("characters");
 		for(u32 i=0; i < characters.count(); i++){
-			Ap::printer().key("character", "%d canvas %d->%d,%d %dx%d advancex->%d offset->%d,%d",
-									characters.at(i).id,
+			Ap::printer().key(String().format("%d", characters.at(i).id), "canvas %d->%d,%d %dx%d advancex->%d offset->%d,%d",
 									characters.at(i).canvas_idx,
 									characters.at(i).canvas_x,
 									characters.at(i).canvas_y,
