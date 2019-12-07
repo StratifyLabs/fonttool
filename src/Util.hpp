@@ -13,13 +13,19 @@
 class Util : public ApplicationPrinter {
 public:
 
+	using IsDetails = arg::Argument<bool, struct UtilIsDetailsTag>;
+
 	static void show_icon_file(
 			File::SourcePath input_file,
 			File::DestinationPath output_file,
 			sg_size_t canvas_size,
 			u16 downsample_size);
 
-	static void show_file_font(const String & path, bool is_details = false);
+	static void show_file_font(
+			File::SourcePath input_file,
+			File::DestinationPath output_file,
+			IsDetails is_details = IsDetails(false)
+			);
 	static void show_font(Font & f);
 	static void show_system_font(int idx);
 	static void clean_path(const String & path, const String & suffix);

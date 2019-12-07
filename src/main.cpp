@@ -179,7 +179,11 @@ int main(int argc, char * argv[]){
 						input.cstring(),
 						is_details
 						);
-			Util::show_file_font(input, is_details);
+			Util::show_file_font(
+						File::SourcePath(input),
+						File::DestinationPath(output),
+						Util::IsDetails(is_details)
+						);
 		}
 		exit(0);
 	}

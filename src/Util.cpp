@@ -16,7 +16,6 @@ void Util::show_icon_file(
 	Printer p;
 	bool is_write_bmp = false;
 	Bitmap bmp_output;
-
 	if( !output_file.argument().is_empty() ){
 		is_write_bmp = true;
 	}
@@ -130,27 +129,34 @@ void Util::clean_path(const String & path, const String & suffix){
 	}
 }
 
-void Util::show_file_font(const String & path, bool is_details){
+void Util::show_file_font(
+		File::SourcePath input_file,
+		File::DestinationPath output_file,
+		IsDetails is_details
+		){
 
 	FileFont ff;
-	Ap::printer().info("Show font %s", path.cstring());
+	Ap::printer().info("Show font %s", input_file.argument().cstring());
 
-	if( ff.set_file(path) < 0 ){
-		printf("Failed to open font %s", path.cstring());
+	if( ff.set_file(input_file.argument()) < 0 ){
+		printf("Failed to open font %s", input_file.argument().cstring());
 		perror("Open failed");
 		return;
 	}
 
 	show_font(ff);
 
-	if( is_details ){
+	if( is_details.argument() ){
 		File f;
 
 		if( f.open(
-				 path,
+				 input_file.argument(),
 				 OpenFlags::read_only()
 				 ) < 0 ){
-			Ap::printer().error("Failed to open file '%s'", path.cstring());
+			Ap::printer().error(
+						"Failed to open file '%s'",
+						input_file.argument().cstring()
+						);
 			return;
 		}
 
@@ -232,6 +238,33 @@ void Util::show_file_font(const String & path, bool is_details){
 		}
 		Ap::printer().close_array();
 	}
+
+
+	if( output_file.argument().is_empty() == false ){
+		u32 length = ff.calculate_length(
+					ff.ascii_character_set()
+					);
+
+		Bitmap output_bitmap(
+					Area(
+						length,
+						ff.get_height()
+						)
+					);
+
+		ff.draw(ff.ascii_character_set(),
+				  output_bitmap,
+				  Point(0,0)
+					);
+
+		Bmp::save(
+					output_file.argument(),
+					output_bitmap,
+					Palette().set_bits_per_pixel(1).fill_gradient_gray()
+					);
+
+	}
+
 }
 
 void Util::show_font(Font & f){
