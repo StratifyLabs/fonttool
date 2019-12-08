@@ -34,48 +34,6 @@ void Util::filter(
 					Area(bitmap.area())
 					)
 				);
-
-#if 0
-	sg_color_t color;
-	sg_color_t colors[2];
-	u32 contrast;
-
-	for(sg_int_t y=0; y < bitmap.height(); y++){
-		for(sg_int_t x=0; x < bitmap.width(); x++){
-			color = bitmap.get_pixel(Point(x,y));
-			contrast = 0;
-			if( color == 0 ){
-				colors[0] = 1;
-				colors[1] = 2;
-			} else {
-				colors[0] = 2;
-				colors[1] = 1;
-			}
-			if( (color == 0) &&
-				 ((bitmap.get_pixel(Point(x+1,y)) == 3) ||
-				 (bitmap.get_pixel(Point(x-1,y)) == 3))
-
-				 ){
-				for(sg_int_t y1=-1; y1 < 2; y1++){
-					for(sg_int_t x1=-1; x1 < 2; x1++){
-						contrast +=
-								bitmap.get_pixel(
-									Point(x + x1, y + y1)
-									) == 3;
-					}
-				}
-
-				if( contrast > 3 ){
-					bitmap.set_pen( Pen().set_color(colors[1]) );
-					bitmap.draw_pixel(Point(x,y));
-				} else if ( contrast > 1 ){
-					bitmap.set_pen( Pen().set_color(colors[0]) );
-					bitmap.draw_pixel(Point(x,y));
-				}
-			}
-		}
-	}
-#endif
 }
 
 void Util::show_icon_file(
@@ -319,8 +277,15 @@ void Util::show_file_font(
 
 
 	if( output_file.argument().is_empty() == false ){
+		ff.set_space_size(8);
+
+		String ascii_characters;
+		for(char c: String(ff.ascii_character_set())){
+			ascii_characters << c << " ";
+		}
+
 		u32 length = ff.calculate_length(
-					ff.ascii_character_set()
+					ascii_characters
 					);
 
 		Bitmap output_bitmap(
@@ -330,15 +295,20 @@ void Util::show_file_font(
 						)
 					);
 
-		ff.draw(ff.ascii_character_set(),
+		output_bitmap.set_bits_per_pixel(2);
+
+		output_bitmap.set_pen( Pen().set_color(3) );
+		ff.draw(ascii_characters,
 				  output_bitmap,
 				  Point(0,0)
 				  );
 
+		filter(output_bitmap);
+
 		Bmp::save(
 					output_file.argument(),
 					output_bitmap,
-					Palette().set_bits_per_pixel(1).fill_gradient_gray()
+					Palette().set_bits_per_pixel(2).fill_gradient_gray()
 					);
 
 	}
@@ -354,6 +324,7 @@ void Util::show_font(Font & f){
 							 f.get_width(),
 							 f.get_height(),
 							 f.bits_per_pixel());
+
 	b.set_bits_per_pixel(f.bits_per_pixel());
 	b.allocate(Area(f.get_width()*8/4, f.get_height()*5/4));
 

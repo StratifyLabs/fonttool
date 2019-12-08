@@ -36,6 +36,8 @@ Or convert a single icon:
 fonttool --action=convert --icon --input=icons/adjust-solid.svg --output=assets/adjust-solid.svic
 ```
 
+![Font Awesome Regular](examples/regular.jpg)
+
 ## Fonts
 
 Font input files must be in svg format. TTF files can be converted to SVG using online font file converters such as https://convertio.co/ttf-svg/.
@@ -45,6 +47,8 @@ Once you have a svg font file use:
 ```
 fonttool --action=convert --input=fonts/OpenSansCondensed-Light.svg --output=assets
 ```
+
+![Open Sans 40pt](examples/OpenSansCondensed-Light-40.jpg)
 
 ### Font Maps
 
@@ -60,6 +64,69 @@ Once the editing is done, you can generate a font from the map file.
 fonttool --action=convert --input=assets/OpenSansCondensed-Light-15-map.json --output=assets
 fonttool --action=show --input=assets/OpenSansCondensed-Light-15-map.sbf
 ```
+
+# File Formats
+
+Both file formats are based on the (Stratify Graphics Library)[https://github.com/StratifyLabs/sgfx].  
+
+## Stratify Bitmap Font (sbf)
+
+The sbf format is:
+
+```
+sg_font_header_t header;
+sg_font_kerning_pair_t kerning_pairs[];
+sg_font_character_t characters[];
+<master bitmaps>
+```
+
+The header includes:
+
+- number of kerning pairs
+- number of characters
+- size and number of master bitmaps
+- number of bits per pixel (1,2,4 or 8)
+
+More information is available with in the (Stratify Graphics Library)[https://github.com/StratifyLabs/sgfx].
+
+## Stratify Bitmap Icon Collection (sbic)
+
+The sbic format shown below.
+
+```
+sg_bitmap_icon_header_t header;
+sg_bitmap_icon_entry_t icon[];
+<master canvas bitmaps>
+```
+
+The header shows
+
+- version
+- number of bits per pixel
+- number of icons and size (all icons are the same size)
+- master canvas count and size
+
+## Stratify Vector Icon Collection (svic)
+
+The svic format contains a list of stratify grapics vectors. The vectors must be rendered in real or pseudo-real time (they can't just be copied like bitmap formats).
+
+The format is a list of vector headers and the vector paths:
+
+```
+sg_vector_icon_header_t header0;
+sg_vector_path_description_t vector_paths0[];
+sg_vector_icon_header_t header1;
+sg_vector_path_description_t vector_paths0[];
+...
+sg_vector_icon_header_t headerN;
+sg_vector_path_description_t vector_pathsN[];
+```
+
+The header defines:
+
+- name of the icon
+- number of vector paths in the icon
+- location of the vector paths in the file
 
 
 # Testing Shortcuts

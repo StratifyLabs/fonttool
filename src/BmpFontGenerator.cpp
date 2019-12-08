@@ -341,7 +341,10 @@ var::Vector<Bitmap> BmpFontGenerator::build_master_canvas(
 	Bitmap master_canvas;
 	
 	if( master_canvas.set_bits_per_pixel(header.bits_per_pixel) < 0 ){
-		printer().error("sgfx does not support %d bits per pixel", header.bits_per_pixel);
+		printer().error(
+					"sgfx does not support %d bits per pixel",
+					header.bits_per_pixel
+					);
 		return master_canvas_list;
 	}
 	

@@ -315,6 +315,7 @@ int SvgFontManager::process_font(
 	output_name
 			<< String().format("-%d", m_point_size / m_downsample.height());
 
+	m_bmp_font_generator.set_bits_per_pixel(bits_per_pixel());
 	m_bmp_font_generator.set_generate_map( is_generate_map() );
 	if( is_generate_map() ){
 		String map_file;
@@ -485,7 +486,15 @@ int SvgFontManager::process_glyph(const JsonObject & glyph){
 		}
 
 		Bitmap canvas;
-		m_vector_path_icon_list = convert_svg_path(canvas, drawing_path, m_canvas_dimensions, m_pour_grid_size, false);
+		canvas.set_bits_per_pixel(bits_per_pixel());
+
+		m_vector_path_icon_list = convert_svg_path(
+					canvas,
+					drawing_path,
+					m_canvas_dimensions,
+					m_pour_grid_size,
+					false
+					);
 
 #if 0
 		printer().open_object("origin") << m_canvas_origin << printer().close();
@@ -502,13 +511,19 @@ int SvgFontManager::process_glyph(const JsonObject & glyph){
 
 		Region active_region = canvas.calculate_active_region();
 		Bitmap active_canvas(active_region.area());
-		active_canvas.draw_sub_bitmap(sg_point(0,0), canvas, active_region);
+		active_canvas.set_bits_per_pixel(bits_per_pixel());
+
+		active_canvas.draw_sub_bitmap(
+					sg_point(0,0),
+					canvas,
+					active_region
+					);
 
 		Area downsampled;
 		downsampled.set_width( (active_canvas.width() + m_downsample.width()/2) / m_downsample.width() );
 		downsampled.set_height( (active_canvas.height() + m_downsample.height()/2) / m_downsample.height() );
 		Bitmap active_canvas_downsampled(downsampled);
-
+		active_canvas_downsampled.set_bits_per_pixel(bits_per_pixel());
 
 		active_canvas_downsampled.clear();
 		active_canvas_downsampled
@@ -598,6 +613,7 @@ void SvgFontManager::fit_icon_to_canvas(Bitmap & bitmap, VectorPath & vector_pat
 
 		bitmap.clear();
 
+		bitmap.set_pen( Pen().set_color(0xffffffff) );
 		sgfx::Vector::draw(bitmap, vector_path, map);
 
 		fit_icon_to_canvas(bitmap, vector_path, map, false);
@@ -864,7 +880,7 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::convert_svg_path(
 		canvas.allocate(canvas_dimensions);
 
 		canvas.set_pen(
-					Pen().set_color(1)
+					Pen().set_color(0xffffffff)
 					.set_thickness(1)
 					.set_fill(true)
 					);
@@ -896,7 +912,9 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::convert_svg_path(
 		vector_path << elements << canvas.get_viewable_region();
 		canvas.clear();
 		printer().open_object("vector path", Printer::DEBUG) << vector_path << printer().close();
+		canvas.set_pen( Pen().set_color(0xffffffff) );
 		sgfx::Vector::draw(canvas, vector_path, map);
+
 		canvas.set_pen(Pen().set_color(0));
 		for(u32 i=0; i < fill_points.count(); i++){
 			printer().message("pour at %d,%d", fill_points.at(i).x, fill_points.at(i).y);

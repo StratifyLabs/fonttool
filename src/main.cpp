@@ -205,6 +205,7 @@ int main(int argc, char * argv[]){
 
 			SvgFontManager svg_font;
 
+			svg_font.set_bits_per_pixel(bits_per_pixel.to_integer());
 			svg_font.set_output_json(is_json);
 			svg_font.set_pour_grid_size( pour_size.to_integer() );
 			svg_font.set_canvas_size( canvas_size.to_integer() );
