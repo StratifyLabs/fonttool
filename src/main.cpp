@@ -14,7 +14,7 @@
 void show_usage(const Cli & cli);
 
 int main(int argc, char * argv[]){
-	String bpp;
+	String bits_per_pixel;
 	String action;
 
 
@@ -106,19 +106,19 @@ int main(int argc, char * argv[]){
 		characters.erase(String::Position(0), String::Length(1));
 	}
 
-	bpp = cli.get_option(
+	bits_per_pixel = cli.get_option(
 				"bpp",
 				Cli::Description("specify the number of bits to use for each pixel --bpp=<1|2|4|8>")
 				);
 
-	if( bpp.is_empty() ){
-		bpp = "1";
-	} else if( bpp == "true" ){
+	if( bits_per_pixel.is_empty() ){
+		bits_per_pixel = "1";
+	} else if( bits_per_pixel == "true" ){
 		Ap::printer().error("use --bpp=<1|2|4|8>");
 		exit(0);
 	}
 
-	switch(bpp.to_integer()){
+	switch(bits_per_pixel.to_integer()){
 		case 1:
 		case 2:
 		case 4:
@@ -140,7 +140,7 @@ int main(int argc, char * argv[]){
 		Ap::printer().key("pour", pour_size);
 		Ap::printer().key("overwrite", is_overwrite ? "true" : "false");
 		Ap::printer().key("characters", characters.is_empty() ? "<ascii>" : characters.cstring() );
-		Ap::printer().key("bpp", bpp);
+		Ap::printer().key("bitsPerPixel", bits_per_pixel);
 		Ap::printer().close_object();
 	}
 
@@ -171,7 +171,8 @@ int main(int argc, char * argv[]){
 						File::SourcePath(input),
 						File::DestinationPath(output),
 						canvas_size.to_integer(),
-						downsample_size.to_integer()
+						downsample_size.to_integer(),
+						bits_per_pixel.to_integer()
 						);
 		} else {
 			Ap::printer().message(
@@ -259,7 +260,7 @@ int main(int argc, char * argv[]){
 						);
 
 			BmpFontManager bmp_font_manager;
-			bmp_font_manager.set_bits_per_pixel(bpp.to_integer());
+			bmp_font_manager.set_bits_per_pixel(bits_per_pixel.to_integer());
 			if( is_map ){
 				bmp_font_manager.set_generate_map(true);
 			}
@@ -275,7 +276,7 @@ int main(int argc, char * argv[]){
 						);
 
 			BmpFontManager bmp_font_manager;
-			bmp_font_manager.set_bits_per_pixel(bpp.to_integer());
+			bmp_font_manager.set_bits_per_pixel(bits_per_pixel.to_integer());
 			bmp_font_manager.generate_map(input);
 			exit(0);
 		}

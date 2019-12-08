@@ -5,11 +5,53 @@
 #include <sapi/fs.hpp>
 #include "Util.hpp"
 
+void Util::filter(
+		Bitmap & bitmap
+		){
+
+	sg_color_t color;
+	sg_color_t colors[2];
+	u32 contrast;
+
+	for(sg_int_t y=0; y < bitmap.height(); y++){
+		for(sg_int_t x=0; x < bitmap.width(); x++){
+			color = bitmap.get_pixel(Point(x,y));
+			contrast = 0;
+			if( color == 0 ){
+				colors[0] = 1;
+				colors[1] = 2;
+			} else {
+				colors[0] = 2;
+				colors[1] = 1;
+			}
+			if( color == 0 ){
+				for(sg_int_t y1=-1; y1 < 2; y1++){
+					for(sg_int_t x1=-1; x1 < 2; x1++){
+						contrast +=
+								bitmap.get_pixel(
+									Point(x + x1, y + y1)
+									) == 3;
+					}
+				}
+
+				if( contrast > 3 ){
+					bitmap.set_pen( Pen().set_color(colors[1]) );
+					bitmap.draw_pixel(Point(x,y));
+				} else if ( contrast > 1 ){
+					bitmap.set_pen( Pen().set_color(colors[0]) );
+					bitmap.draw_pixel(Point(x,y));
+				}
+			}
+		}
+	}
+}
+
 void Util::show_icon_file(
 		File::SourcePath input_file,
 		File::DestinationPath output_file,
 		sg_size_t canvas_size,
-		u16 downsample_size
+		u16 downsample_size,
+		u8 bits_per_pixel
 		){
 
 	File icon_file;
@@ -17,6 +59,7 @@ void Util::show_icon_file(
 	bool is_write_bmp = false;
 	Bitmap bmp_output;
 	if( !output_file.argument().is_empty() ){
+		bmp_output.set_bits_per_pixel(bits_per_pixel);
 		is_write_bmp = true;
 	}
 
@@ -31,6 +74,8 @@ void Util::show_icon_file(
 	Svic icon_collection(input_file.argument());
 	Bitmap canvas(Area(canvas_size, canvas_size));
 
+	canvas.set_bits_per_pixel(bits_per_pixel);
+
 	Area downsampled_area(
 				downsample_size, downsample_size
 				);
@@ -39,6 +84,7 @@ void Util::show_icon_file(
 	canvas_downsampled_area.set_width( (canvas.width() + downsample_size/2) / downsample_size );
 	canvas_downsampled_area.set_height( (canvas.height() + downsample_size/2) / downsample_size );
 	Bitmap canvas_downsampled(canvas_downsampled_area);
+	canvas_downsampled.set_bits_per_pixel(bits_per_pixel);
 	VectorMap map(canvas);
 
 	p.message("%d icons in collection", icon_collection.count());
@@ -61,28 +107,28 @@ void Util::show_icon_file(
 		VectorPath vector_path = icon_collection.at(i);
 		vector_path << canvas.get_viewable_region();
 		canvas.clear();
+		canvas.set_pen( Pen().set_color((u32)-1) );
+
 		sgfx::Vector::draw(
 					canvas,
 					vector_path,
 					map
 					);
 
-		if( downsample_size > 1 ){
-			canvas_downsampled.downsample_bitmap(
-						canvas,
-						downsampled_area
-						);
-			p.open_object("icon") << canvas_downsampled << p.close();
-		} else {
-			p.open_object("icon") << canvas << p.close();
-		}
+		canvas_downsampled.downsample_bitmap(
+					canvas,
+					downsampled_area
+					);
+
+		filter(canvas_downsampled);
+		p.open_object("icon") << canvas_downsampled << p.close();
 
 		if( is_write_bmp ){
 			bmp_output.draw_sub_bitmap(
 						Point(
 							(i % count) * canvas_downsampled_area.width(),
 							i / count * canvas_downsampled_area.height()
-						),
+							),
 						canvas_downsampled,
 						Region(Point(0,0), canvas_downsampled_area)
 						);
@@ -95,7 +141,7 @@ void Util::show_icon_file(
 		Palette bmp_pallete;
 
 		bmp_pallete
-				.set_bits_per_pixel(1)
+				.set_bits_per_pixel(bits_per_pixel)
 				.fill_gradient_gray();
 
 
@@ -255,7 +301,7 @@ void Util::show_file_font(
 		ff.draw(ff.ascii_character_set(),
 				  output_bitmap,
 				  Point(0,0)
-					);
+				  );
 
 		Bmp::save(
 					output_file.argument(),
