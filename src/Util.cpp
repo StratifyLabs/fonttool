@@ -9,6 +9,33 @@ void Util::filter(
 		Bitmap & bitmap
 		){
 
+
+	sg_antialias_filter_t filter;
+	sg_color_t contrast_data[8];
+
+	contrast_data[0] = 0;
+	contrast_data[1] = 0;
+	contrast_data[2] = 1;
+	contrast_data[3] = 1;
+	contrast_data[4] = 2;
+	contrast_data[5] = 2;
+	contrast_data[6] = 2;
+	contrast_data[7] = 2;
+
+	bitmap.api()->antialias_filter_init(
+				&filter,
+				contrast_data);
+
+	bitmap.api()->antialias_filter_apply(
+				bitmap.bmap(),
+				&filter,
+				Region(
+					Point(0,0),
+					Area(bitmap.area())
+					)
+				);
+
+#if 0
 	sg_color_t color;
 	sg_color_t colors[2];
 	u32 contrast;
@@ -24,7 +51,11 @@ void Util::filter(
 				colors[0] = 2;
 				colors[1] = 1;
 			}
-			if( color == 0 ){
+			if( (color == 0) &&
+				 ((bitmap.get_pixel(Point(x+1,y)) == 3) ||
+				 (bitmap.get_pixel(Point(x-1,y)) == 3))
+
+				 ){
 				for(sg_int_t y1=-1; y1 < 2; y1++){
 					for(sg_int_t x1=-1; x1 < 2; x1++){
 						contrast +=
@@ -44,6 +75,7 @@ void Util::filter(
 			}
 		}
 	}
+#endif
 }
 
 void Util::show_icon_file(

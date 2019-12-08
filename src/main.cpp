@@ -150,12 +150,10 @@ int main(int argc, char * argv[]){
 
 		Ap::printer().message("action=show");
 
-
-
 		if( input_suffix == "svic" ){
 			Ap::printer().message(
 						"Show icon file %s with canvas size %d",
-						input.capacity(),
+						input.cstring(),
 						canvas_size.to_integer()
 						);
 
