@@ -171,6 +171,7 @@ int SvgFontManager::process_svg_icon(
 	if( view_box.is_empty() == false ){
 		m_bounds = parse_bounds(view_box.cstring());
 		m_aspect_ratio = m_bounds.width() * 1.0f / m_bounds.height();
+		//m_aspect_ratio = 1.0f;
 		m_canvas_dimensions = Area(m_canvas_size, m_canvas_size);
 		printer().open_object("bounds") << m_bounds << printer().close();
 		printer().open_object("Canvas Dimensions") << m_canvas_dimensions << printer().close();
@@ -1316,16 +1317,18 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::process_svg_path(
 		){
 
 	String modified_path;
+	String transform_path = path;
+	transform_path.replace(",", String::ToInsert(" "));
 	bool is_command;
 	bool has_dot = false;
-	for(u32 i=0; i < path.length(); i++){
-		is_command = path_commands_sign().find(path.at(i)) != String::npos;
+	for(u32 i=0; i < transform_path.length(); i++){
+		is_command = path_commands_sign().find(transform_path.at(i)) != String::npos;
 
-		if( (path.at(i) == ' ') || is_command ){
+		if( (transform_path.at(i) == ' ') || is_command ){
 			has_dot = false;
 		}
 
-		if( path.at(i) == '.' ){
+		if( transform_path.at(i) == '.' ){
 			if( has_dot == true ){
 				modified_path << " ";
 			} else {
@@ -1333,13 +1336,13 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::process_svg_path(
 			}
 		}
 
-		if( (path.at(i) == '-' &&
-			  (path_commands().find(path.at(i-1)) == String::npos)) ||
-			 path.at(i) != '-'){
+		if( (transform_path.at(i) == '-' &&
+			  (path_commands().find(transform_path.at(i-1)) == String::npos)) ||
+			 transform_path.at(i) != '-'){
 			if( is_command ){ modified_path << " "; }
 		}
 		//- should have a space between numbers but not commands
-		modified_path << path.at(i);
+		modified_path << transform_path.at(i);
 	}
 
 
@@ -1369,10 +1372,9 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::process_svg_path(
 		} else {
 			arg = path_tokens.at(i++).to_float();
 		}
-
 #if 0
 		//used for debugging path parsing -- stop when the error shows up to pinpoint
-		if( result.count() > 48 ){
+		if( result.count() > 25 ){
 			return result;
 		}
 #endif
@@ -1384,6 +1386,7 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::process_svg_path(
 				y = path_tokens.at(i++).to_float();
 				current_point = convert_svg_coord(x, y);
 				move_point = current_point;
+				control_point = current_point;
 				result.push_back(sgfx::Vector::get_path_move(current_point));
 
 				object.insert("command", JsonInteger(command_char));
@@ -1396,6 +1399,7 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::process_svg_path(
 				x = arg;
 				y = path_tokens.at(i++).to_float();
 				current_point += convert_svg_coord(x, y, false);
+				control_point = current_point;
 				move_point = current_point;
 				result.push_back(sgfx::Vector::get_path_move(current_point));
 
@@ -1411,6 +1415,7 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::process_svg_path(
 				p = convert_svg_coord(x, y);
 				result.push_back(sgfx::Vector::get_path_line(p));
 				current_point = p;
+				control_point = current_point;
 
 				object.insert("command", JsonInteger(command_char));
 				object.insert("x", JsonReal( x ));
@@ -1425,6 +1430,7 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::process_svg_path(
 				p += current_point;
 				result.push_back(sgfx::Vector::get_path_line(p));
 				current_point = p;
+				control_point = current_point;
 
 				object.insert("command", JsonInteger(command_char));
 				object.insert("x", JsonReal( x ));
@@ -1439,6 +1445,7 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::process_svg_path(
 				p = Point(p.x(), current_point.y());
 				result.push_back(sgfx::Vector::get_path_line(p));
 				current_point = p;
+				control_point = current_point;
 
 				object.insert("command", JsonInteger(command_char));
 				object.insert("x", JsonReal( x ));
@@ -1452,6 +1459,7 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::process_svg_path(
 				p = Point(p.x() + current_point.x(), current_point.y());
 				result.push_back(sgfx::Vector::get_path_line(p));
 				current_point = p;
+				control_point = current_point;
 
 				object.insert("command", JsonInteger(command_char));
 				object.insert("x", JsonReal( x ));
@@ -1465,6 +1473,7 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::process_svg_path(
 				p = Point(current_point.x(), p.y());
 				result.push_back(sgfx::Vector::get_path_line(p));
 				current_point = p;
+				control_point = current_point;
 
 				object.insert("command", JsonInteger(command_char));
 				object.insert("y", JsonReal( y ));
@@ -1478,6 +1487,7 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::process_svg_path(
 				p = Point(current_point.x(), p.y() + current_point.y());
 				result.push_back(sgfx::Vector::get_path_line(p));
 				current_point = p;
+				control_point = current_point;
 
 				object.insert("command", JsonInteger(command_char));
 				object.insert("y", JsonReal( y ));
@@ -1548,6 +1558,7 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::process_svg_path(
 				y = path_tokens.at(i++).to_float();
 
 				points[0] = current_point*2 - control_point;
+				//first point is a reflection of the current point
 				points[0] = Point(2*current_point.x() - control_point.x(), 2*current_point.y() - control_point.y());
 				points[1] = convert_svg_coord(x2, y2);
 				points[2] = convert_svg_coord(x, y);
@@ -1572,6 +1583,10 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::process_svg_path(
 				x = path_tokens.at(i++).to_float();
 				y = path_tokens.at(i++).to_float();
 
+				if( current_point == control_point ){
+					printer().debug("the same");
+				}
+				//first point is a reflection of the current point
 				points[0] = Point(2*current_point.x() - control_point.x(), 2*current_point.y() - control_point.y());
 				//! \todo should convert_svg_coord be relative??
 				points[1] = current_point + convert_svg_coord(x2, y2, false);
@@ -1686,6 +1701,7 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::process_svg_path(
 				p = convert_svg_coord(x, y);
 				result.push_back(sgfx::Vector::get_path_line(p));
 				current_point = p;
+				control_point = current_point;
 
 				object.insert("x", JsonReal( x ));
 				object.insert("y", JsonReal( y ));
@@ -1708,6 +1724,7 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::process_svg_path(
 				p = current_point + convert_svg_coord(x, y, false);
 				result.push_back(sgfx::Vector::get_path_line(p));
 				current_point = p;
+				control_point = current_point;
 
 				object.insert("x", JsonReal( x ));
 				object.insert("y", JsonReal( y ));
@@ -1720,6 +1737,7 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::process_svg_path(
 
 				result.push_back(sgfx::Vector::get_path_close());
 				current_point = move_point;
+				control_point = current_point;
 
 				object.insert("command", JsonInteger(command_char));
 				i++;
