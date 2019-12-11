@@ -129,19 +129,21 @@ int main(int argc, char * argv[]){
 			exit(0);
 	}
 
-	Ap::printer().open_object("options");
-	{
-		Ap::printer().key("action", action);
-		Ap::printer().key("details", is_details ? "true" : "false");
-		Ap::printer().key("input", input);
-		Ap::printer().key("output", output.is_empty() ? "<auto>" : output.cstring() );
-		Ap::printer().key("canvas", canvas_size);
-		Ap::printer().key("downsample", downsample_size);
-		Ap::printer().key("pour", pour_size);
-		Ap::printer().key("overwrite", is_overwrite ? "true" : "false");
-		Ap::printer().key("characters", characters.is_empty() ? "<ascii>" : characters.cstring() );
-		Ap::printer().key("bitsPerPixel", bits_per_pixel);
-		Ap::printer().close_object();
+	if( cli.get_option("help") != "true" ){
+		Ap::printer().open_object("options");
+		{
+			Ap::printer().key("action", action);
+			Ap::printer().key("details", is_details ? "true" : "false");
+			Ap::printer().key("input", input);
+			Ap::printer().key("output", output.is_empty() ? "<auto>" : output.cstring() );
+			Ap::printer().key("canvas", canvas_size);
+			Ap::printer().key("downsample", downsample_size);
+			Ap::printer().key("pour", pour_size);
+			Ap::printer().key("overwrite", is_overwrite ? "true" : "false");
+			Ap::printer().key("characters", characters.is_empty() ? "<ascii>" : characters.cstring() );
+			Ap::printer().key("bitsPerPixel", bits_per_pixel);
+			Ap::printer().close_object();
+		}
 	}
 
 	String input_suffix = FileInfo::suffix(input);
@@ -195,6 +197,7 @@ int main(int argc, char * argv[]){
 
 	if( action == "convert" ){
 
+		Ap::printer().message("convering");
 		//input is a bmp, svg or map file
 		if( input.is_empty() || input == "true" ){
 			Ap::printer().error("input file or directory must be specified with --input=<path>");

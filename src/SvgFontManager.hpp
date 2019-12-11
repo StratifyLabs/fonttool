@@ -14,6 +14,7 @@ public:
 	FillPoint(const Point & point, sg_size_t spacing){
 		m_point = point;
 		m_spacing = spacing;
+		m_group = -1;
 	}
 
 	Point point() const { return m_point; }
@@ -27,9 +28,17 @@ public:
 		return spacing() > a.spacing();
 	}
 
+	FillPoint & set_group(int group){
+		m_group = group;
+		return *this;
+	}
+
+	int group() const{ return m_group; }
+
 private:
+	int m_group;
 	sg_size_t m_spacing;
-	sg_point_t m_point;
+	Point m_point;
 };
 
 class SvgFontManager : public FontObject {
@@ -105,6 +114,7 @@ private:
 	char m_last_command_character;
 	Region m_bounds;
 	float m_scale;
+	float m_aspect_ratio;
 	int m_scale_sign_y;
 	u16 m_point_size;
 	bool m_is_output_json;
@@ -124,13 +134,36 @@ private:
 	Area calculate_canvas_dimension(const Region & bounds, sg_size_t canvas_size);
 	Point calculate_canvas_origin(const Region & bounds, const Area & canvas_dimensions);
 	Point convert_svg_coord(float x, float y, bool is_absolute = true);
-	void fit_icon_to_canvas(Bitmap & bitmap, VectorPath & vector_path, const VectorMap & map, bool recheck);
-	static var::Vector<sg_point_t> calculate_pour_points(Bitmap & bitmap, const var::Vector<FillPoint> & fill_points);
-	static var::Vector<FillPoint> find_all_fill_points(const Bitmap & bitmap, const Region & region, sg_size_t grid);
+	void fit_icon_to_canvas(Bitmap & bitmap, VectorPath & vector_path, const VectorMap & map);
+	static var::Vector<sg_point_t> calculate_pour_points(Bitmap & bitmap, const var::Vector<Point> & fill_points);
 	static sg_size_t is_fill_point(const Bitmap & bitmap, sg_point_t point, const Region & region);
 	int process_glyph(const JsonObject & glyph);
 	int process_hkern(const JsonObject & kerning);
 	sg_size_t map_svg_value_to_bitmap(u32 value);
+
+
+
+	var::Vector<Point> find_all_fill_points(const Bitmap & bitmap, const Region & region, sg_size_t grid);
+
+	var::Vector<FillPoint> find_horizontal_fill_point_candidates(
+			const Bitmap & bitmap,
+			const Region & region,
+			sg_size_t grid_size
+			);
+	var::Vector<var::Vector<FillPoint>> group_fill_point_candidates(
+			const Bitmap & bitmap,
+			var::Vector<FillPoint> & horizontal_fill_points
+			);
+
+	var::Vector<Point> find_final_fill_points(
+			const Bitmap & bitmap,
+			const var::Vector<var::Vector<FillPoint>> & fill_point_groups
+			);
+
+	sg_size_t get_y_fill_spacing(
+			const Bitmap & bitmap,
+			Point point
+			);
 
 
 };

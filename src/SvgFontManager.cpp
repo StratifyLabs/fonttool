@@ -170,7 +170,8 @@ int SvgFontManager::process_svg_icon(
 
 	if( view_box.is_empty() == false ){
 		m_bounds = parse_bounds(view_box.cstring());
-		m_canvas_dimensions = calculate_canvas_dimension(m_bounds, m_canvas_size);
+		m_aspect_ratio = m_bounds.width() * 1.0f / m_bounds.height();
+		m_canvas_dimensions = Area(m_canvas_size, m_canvas_size);
 		printer().open_object("bounds") << m_bounds << printer().close();
 		printer().open_object("Canvas Dimensions") << m_canvas_dimensions << printer().close();
 	} else {
@@ -582,43 +583,75 @@ int SvgFontManager::process_glyph(const JsonObject & glyph){
 
 }
 
-void SvgFontManager::fit_icon_to_canvas(Bitmap & bitmap, VectorPath & vector_path, const VectorMap & map, bool recheck){
-	Region region = bitmap.calculate_active_region();
+void SvgFontManager::fit_icon_to_canvas(
+		Bitmap & bitmap,
+		VectorPath & vector_path,
+		const VectorMap & map
+		){
+	Region active_region
+			= bitmap.calculate_active_region();
+
 	Point map_shift;
 	Point bitmap_shift;
-	float map_scale, width_scale, height_scale;
+	float width_scale, height_scale;
+
+	printer().open_object("fit icon to canvas", Printer::MESSAGE);
+	printer() << bitmap;
 
 	printer().open_object("active region");
-	printer() << region;
+	printer() << active_region;
 	printer().close_object();
 
-	bitmap_shift = Point(bitmap.width()/2 - region.area().width()/2 - region.point().x(),
-								bitmap.height()/2 - region.area().height()/2 - region.point().y());
-	printer().message("Offset Error is %d,%d", bitmap_shift.x(), bitmap_shift.y());
+	printer().open_object("calculate offset error", Printer::DEBUG);
+	printer() << bitmap.area();
 
-	width_scale = bitmap.width() * 1.0f / region.area().width();
-	height_scale = bitmap.height() * 1.0f / region.area().height();
-	map_scale = (width_scale < height_scale ? width_scale : height_scale) * 0.99f;
-	printer().message("scale %0.2f", map_scale);
+	bitmap_shift = Point(
+				bitmap.width()/2 - active_region.area().width()/2 - active_region.point().x(),
+				bitmap.height()/2 - active_region.area().height()/2 - active_region.point().y()
+				);
 
-	Region map_region = map.region();
-	map_shift = Point(((s32)bitmap_shift.x() * SG_MAX*2 + map_region.area().width()/2) / map_region.area().width(),
-							((s32)bitmap_shift.y() * SG_MAX*2 + map_region.area().height()/2) / map_region.area().height() * m_scale_sign_y);
+	width_scale = (bitmap.width()-4) * 1.0f / active_region.area().width();
+	height_scale = (bitmap.height()-4) * 1.0f / active_region.area().height();
 
-	printer().message("Map Shift is %d,%d", map_shift.x(), map_shift.y());
+	printer().message(
+				"Scaling Error is %d,%d %0.3fx%0.3f",
+				bitmap_shift.x(),
+				bitmap_shift.y(),
+				width_scale,
+				height_scale
+				);
 
-	if( recheck ){
-		vector_path += map_shift;
-		vector_path *= map_scale;
+	printer().close_object();
 
-		bitmap.clear();
+	s32 shift_x = ((s32)bitmap_shift.x() * SG_MAP_MAX*2 + bitmap.width()/2) / bitmap.width();
+	s32 shift_y = ((s32)bitmap_shift.y() * SG_MAP_MAX*2 + bitmap.height()/2) / bitmap.height() * m_scale_sign_y;
 
-		bitmap.set_pen( Pen().set_color(0xffffffff) );
-		sgfx::Vector::draw(bitmap, vector_path, map);
-
-		fit_icon_to_canvas(bitmap, vector_path, map, false);
+	if( m_aspect_ratio > 1.0f ){
+		height_scale /= m_aspect_ratio;
+	} else {
+		width_scale *= m_aspect_ratio;
 	}
 
+	map_shift = Point(
+				shift_x,
+				shift_y
+				);
+
+	printer().open_object("vector transformation", Printer::MESSAGE);
+	printer().key("scale", "%0.2fx%0.2f", width_scale, height_scale);
+	printer() << map_shift;
+	printer().close_object();
+
+	vector_path.shift(map_shift);
+	vector_path.scale(width_scale, height_scale);
+
+	bitmap.clear();
+	bitmap.set_pen( Pen().set_color(0xffffffff) );
+	sgfx::Vector::draw(bitmap, vector_path, map);
+
+	printer() << bitmap;
+
+	printer().close_object();
 	//bitmap.draw_rectangle(region.point(), region.area());
 }
 
@@ -697,7 +730,7 @@ Point SvgFontManager::calculate_canvas_origin(const Region & bounds, const Area 
 					  (bounds.area().height() + bounds.point().y()) * canvas_dimensions.height() / (bounds.area().height()) );
 }
 
-var::Vector<sg_point_t> SvgFontManager::calculate_pour_points(Bitmap & bitmap, const var::Vector<FillPoint> & fill_points){
+var::Vector<sg_point_t> SvgFontManager::calculate_pour_points(Bitmap & bitmap, const var::Vector<Point> & fill_points){
 
 	Region region;
 	var::Vector<sg_point_t> result;
@@ -708,8 +741,14 @@ var::Vector<sg_point_t> SvgFontManager::calculate_pour_points(Bitmap & bitmap, c
 	printer() << region;
 	printer().close_object();
 
+	for(const auto & p: fill_points){
+		if( bitmap.get_pixel(p) == 0 ){
+			bitmap.draw_pour(p, region);
+			result.push_back(p);
+		}
+	}
 	for(u32 i=0; i < fill_points.count(); i++){
-		Point p = fill_points.at(i).point();
+		Point p = fill_points.at(i);
 		if( bitmap.get_pixel(p) == 0 ){
 			bitmap.draw_pour(p, region);
 			result.push_back(p);
@@ -720,22 +759,267 @@ var::Vector<sg_point_t> SvgFontManager::calculate_pour_points(Bitmap & bitmap, c
 
 }
 
-var::Vector<FillPoint> SvgFontManager::find_all_fill_points(const Bitmap & bitmap, const Region & region, sg_size_t grid){
-	sg_size_t spacing;
-	var::Vector<FillPoint> fill_point_spacing;
-	for(sg_int_t x = region.point().x(); x < region.area().width(); x+=grid){
-		for(sg_int_t y = 0; y < region.area().height(); y+=grid){
-			spacing = is_fill_point(bitmap, sg_point(x,y), region);
-			if( spacing ){
-				fill_point_spacing.push_back(FillPoint(Point(x,y), spacing));
+var::Vector<FillPoint> SvgFontManager::find_horizontal_fill_point_candidates(
+		const Bitmap & bitmap,
+		const Region & region,
+		sg_size_t grid_size
+		){
+	var::Vector<FillPoint> result;
+
+	Bitmap debug_bitmap(bitmap.area());
+	debug_bitmap.set_bits_per_pixel(4);
+	debug_bitmap.clear();
+	debug_bitmap.set_pen( Pen().set_color(1) );
+	debug_bitmap.draw_bitmap(Point(0,0), bitmap);
+
+
+	EdgeDetector edge_detector(bitmap);
+
+	for(sg_int_t y = 1; y < bitmap.height(); y+=grid_size){
+		//process one line at a time
+		edge_detector.set_region(
+					Region(
+						Point(0,y),
+						Area(bitmap.width(), 1)
+						)
+					);
+
+		Point end_point = edge_detector.region().end_point();
+
+		var::Vector<Array<Point, 2>> edges;
+		Array<Point, 2> edge_pair;
+		do {
+			edge_pair.at(0) = edge_detector.find_next();
+			edge_pair.at(1) = edge_detector.find_next();
+			if( edge_pair.at(0) != edge_detector.region().end_point() ){
+				edges.push_back(edge_pair);
+			}
+		} while( edge_pair.at(1) != end_point );
+
+		for(size_t i = 1; i < edges.count(); i+=2){
+
+			/*	/0\ first edge pair
+			 * /1\ second edge pair
+			 * ----- fill area between even to odd pair
+			 * | end of bitmap
+			 *
+			 * |   /0\---------/1\    /2\-------/3\    |
+			 *
+			 * Edge cases
+			 *
+			 * |  /0\---------/1\    /2\---------/3|
+			 * |  /0\---------/1\    /2\           |
+			 *
+			 */
+			//
+
+			if( edges.at(i).at(0).x() != end_point.x() ){
+				//first candidate
+				result.push_back(
+							FillPoint(
+								Point(
+									(edges.at(i).at(0).x() - edges.at(i-1).at(1).x())/2 + edges.at(i-1).at(1).x(),
+									y
+									),
+								edges.at(i).at(0).x() - edges.at(i-1).at(1).x()
+								)
+							);
 			}
 		}
 	}
-	fill_point_spacing.sort( var::Vector<FillPoint>::descending );
-	return fill_point_spacing;
+
+
+	debug_bitmap.set_pen( Pen().set_color(2) );
+	for(const auto & fill_point_candidate: result){
+		debug_bitmap.draw_pixel(fill_point_candidate.point());
+	}
+
+	printer().open_object("horizontal fill analysis", sys::Printer::DEBUG);
+	printer() << debug_bitmap;
+	printer().close_object();
+
+	return result;
 }
 
-sg_size_t SvgFontManager::is_fill_point(const Bitmap & bitmap, sg_point_t point, const Region & region){
+var::Vector<var::Vector<FillPoint>> SvgFontManager::group_fill_point_candidates(
+		const Bitmap & bitmap,
+		var::Vector<FillPoint> & horizontal_fill_points
+		){
+
+	var::Vector<var::Vector<FillPoint>> result;
+
+	int group_count = 0;
+	for(u32 i=0; i < horizontal_fill_points.count(); i++){
+		FillPoint & fill_point = horizontal_fill_points.at(i);
+		if( fill_point.group() < 0 ){
+			Bitmap fill_bitmap(bitmap.area());
+			fill_bitmap.clear();
+			fill_bitmap.set_pen( Pen().set_color(1) );
+			fill_bitmap.draw_bitmap(Point(0,0), bitmap);
+			fill_bitmap.draw_pour(fill_point.point(), fill_bitmap.region());
+			fill_point.set_group(group_count);
+			printer().open_object(
+						String().format(
+							"fill %d,%d",
+							fill_point.point().x(),
+							fill_point.point().y()
+							),
+						sys::Printer::DEBUG
+						);
+			printer() << fill_bitmap;
+			printer().close_object();
+
+			for(size_t j = i+1; j < horizontal_fill_points.count(); j++){
+				FillPoint & check_point = horizontal_fill_points.at(j);
+				if( fill_bitmap.get_pixel(check_point.point()) != 0 ){
+					check_point.set_group(group_count);
+				}
+			}
+			group_count++;
+
+		}
+	}
+
+	for(int group = 0; group < group_count; group++){
+		Vector<FillPoint> group_list;
+		for(const auto & fill_point: horizontal_fill_points){
+			if( fill_point.group() == group ){
+				group_list.push_back(fill_point);
+			}
+		}
+		result.push_back(group_list);
+	}
+
+	printer().message("%d == %d fill point groups", result.count(), group_count);
+	for(const auto & group: result){
+		printer().message("group has %d points", group.count());
+	}
+	return result;
+
+}
+
+sg_size_t SvgFontManager::get_y_fill_spacing(
+		const Bitmap & bitmap,
+		Point point
+		){
+
+	sg_size_t top_spacing = 0;
+	sg_size_t bottom_spacing = 0;
+	sg_color_t pixel;
+	Point start_point = point;
+	do {
+		pixel = bitmap.get_pixel(point);
+		bottom_spacing++;
+		point += Point::Y(1);
+	} while(
+			  (pixel == 0) && (point.y() < bitmap.height())
+			  );
+
+	//hits bottom without finding a pixel
+	if(( point.y() == bitmap.height()) &&
+			(pixel == 0) ){
+		return 0;
+	}
+
+	point = start_point;
+
+	do {
+		pixel = bitmap.get_pixel(point);
+		top_spacing++;
+		point -= Point::Y(1);
+	} while(
+			  (pixel == 0) && (point.y() > 0)
+			  );
+
+	//hits top without finding a pixel
+	if( (point.y() == 0) &&
+		 (pixel == 0) ){
+		return 0;
+	}
+
+	sg_size_t spacing = top_spacing < bottom_spacing ? top_spacing : bottom_spacing;
+	printer().debug(
+				"point %d, %d y spacing = %d ",
+				start_point.x(),
+				start_point.y(),
+				spacing
+				);
+
+	return spacing;
+}
+
+var::Vector<Point> SvgFontManager::find_final_fill_points(
+		const Bitmap & bitmap,
+		const var::Vector<var::Vector<FillPoint>> & fill_point_groups
+		){
+	var::Vector<Point> result;
+
+	//for each group find the point with the max spacing -- need to to search y edges
+	for(const auto & group: fill_point_groups){
+
+		sg_size_t spacing = 0;
+		size_t best_point = 0;
+
+		for(size_t i=0; i < group.count(); i++){
+			sg_size_t x_spacing = group.at(i).spacing();
+			if( x_spacing > spacing ){
+				sg_size_t y_spacing = get_y_fill_spacing(bitmap, group.at(i).point());
+				if( y_spacing > spacing ){
+					spacing = x_spacing > y_spacing ? y_spacing : x_spacing;
+					best_point = i;
+				}
+			}
+		}
+
+		if( (spacing > 0) && (group.count() > 2) ){
+			const FillPoint & fill_point = group.at(best_point);
+			printer().message(
+						"adding final fill point %d,%d with in spacing %d",
+						fill_point.point().x(),
+						fill_point.point().y(),
+						spacing
+						);
+			result.push_back(fill_point.point());
+		}
+	}
+
+	return result;
+}
+
+var::Vector<Point> SvgFontManager::find_all_fill_points(
+		const Bitmap & bitmap,
+		const Region & region,
+		sg_size_t grid
+		){
+
+	var::Vector<FillPoint> candidates
+			= find_horizontal_fill_point_candidates(
+				bitmap,
+				region,
+				grid
+				);
+
+	var::Vector<Vector<FillPoint>> grouped_candidates
+			= group_fill_point_candidates(
+				bitmap,
+				candidates
+				);
+
+	var::Vector<Point> fill_points = find_final_fill_points(
+				bitmap,
+				grouped_candidates
+				);
+
+
+	return fill_points;
+}
+
+sg_size_t SvgFontManager::is_fill_point(
+		const Bitmap & bitmap,
+		sg_point_t point,
+		const Region & region
+		){
+
 	int boundary_count;
 	sg_color_t color;
 	sg_point_t temp = point;
@@ -755,12 +1039,23 @@ sg_size_t SvgFontManager::is_fill_point(const Bitmap & bitmap, sg_point_t point,
 
 	boundary_count = 0;
 
+	Cursor y_cursor(bitmap, region.point());
+
 	do {
+		Cursor x_cursor = y_cursor;
+
+		//look for positive edge
 		while( (temp.x < width) && (bitmap.get_pixel(temp) == 0) ){
 			temp.x++;
 		}
 
 		spacing = temp.x - point.x;
+
+		printer().debug(
+					"-- spacing is %d vs %d",
+					spacing,
+					x_cursor.find_positive_edge(width)
+					);
 
 		if( temp.x < width ){
 			boundary_count++;
@@ -871,7 +1166,8 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::convert_svg_path(
 		const var::String & d,
 		const Area & canvas_dimensions,
 		sg_size_t grid_size,
-		bool is_fit_icon){
+		bool is_fit_icon
+		){
 
 	var::Vector<sg_vector_path_description_t> elements;
 
@@ -890,22 +1186,33 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::convert_svg_path(
 		vector_path << elements << canvas.get_viewable_region();
 
 		canvas.clear();
-
 		map.set_rotation(0);
 		sgfx::Vector::draw(canvas, vector_path, map);
 
 		if( is_fit_icon ){
-			fit_icon_to_canvas(canvas, vector_path, map, true);
+			printer().message("fit icon to canvas %dx%d", canvas.width(), canvas.height());
+			fit_icon_to_canvas(canvas, vector_path, map);
 		}
 
-		var::Vector<FillPoint> fill_spacing_points;
-		fill_spacing_points = find_all_fill_points(canvas, canvas.get_viewable_region(), grid_size);
+		var::Vector<Point> fill_points;
+		fill_points = find_all_fill_points(canvas, canvas.get_viewable_region(), grid_size);
+		printer().message(
+					"found %d fill points",
+					fill_points.count()
+					);
 
-		var::Vector<sg_point_t> fill_points = calculate_pour_points(canvas, fill_spacing_points);
-		for(u32 i=0; i < fill_points.count(); i++){
+		for(const auto & point: fill_points){
 			Point pour_point;
-			pour_point = fill_points.at(i);
+			pour_point = point;
 			pour_point.unmap(map);
+			printer().message(
+						"unmap pour point %d,%d to vector space %d,%d",
+						point.x(),
+						point.y(),
+						pour_point.x(),
+						pour_point.y()
+						);
+
 			elements.push_back(sgfx::Vector::get_path_pour(pour_point));
 		}
 
@@ -917,9 +1224,14 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::convert_svg_path(
 
 		canvas.set_pen(Pen().set_color(0));
 		for(u32 i=0; i < fill_points.count(); i++){
-			printer().message("pour at %d,%d", fill_points.at(i).x, fill_points.at(i).y);
+			printer().message(
+						"mark pour at %d,%d",
+						fill_points.at(i).x(),
+						fill_points.at(i).y()
+						);
 			canvas.draw_pixel(fill_points.at(i));
 		}
+
 		Region active_region = canvas.calculate_active_region();
 
 		Bitmap active_bitmap( active_region.area() );

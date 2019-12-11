@@ -110,7 +110,7 @@ void Util::show_icon_file(
 					downsampled_area
 					);
 
-		filter(canvas_downsampled);
+		//filter(canvas_downsampled);
 		p.open_object("icon") << canvas_downsampled << p.close();
 
 		if( is_write_bmp ){
