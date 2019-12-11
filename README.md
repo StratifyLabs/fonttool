@@ -135,7 +135,7 @@ Icons:
 
 ```
 fonttool --action=convert --icon --input=icons/svgs/regular --output=assets --canvas=128
-fonttool --action=show --input=assets/regular.svic
+fonttool --action=show --input=assets/regular.svic --output=assets/regular.bmp
 fonttool --action=convert --icon --input=icons/svgs/solid/adjust.svg --output=assets/adjust-solid.svic
 fonttool --action=show --input=assets/adjust-solid.svic
 fonttool --action=show --input=assets/adjust-solid.svic --canvas=32

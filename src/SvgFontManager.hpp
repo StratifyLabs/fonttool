@@ -145,19 +145,26 @@ private:
 
 	var::Vector<Point> find_all_fill_points(const Bitmap & bitmap, const Region & region, sg_size_t grid);
 
-	var::Vector<FillPoint> find_horizontal_fill_point_candidates(
+	var::Vector<FillPoint> find_fill_point_candidates(
+			const Bitmap & bitmap,
+			const Region & region,
+			sg_size_t grid_size,
+			bool is_negative_fill
+			);
+
+	var::Vector<FillPoint> find_negative_fill_point_candidates(
 			const Bitmap & bitmap,
 			const Region & region,
 			sg_size_t grid_size
 			);
+
 	var::Vector<var::Vector<FillPoint>> group_fill_point_candidates(
 			const Bitmap & bitmap,
-			var::Vector<FillPoint> & horizontal_fill_points
-			);
+			var::Vector<FillPoint> & fill_points);
 
-	var::Vector<Point> find_final_fill_points(
-			const Bitmap & bitmap,
-			const var::Vector<var::Vector<FillPoint>> & fill_point_groups
+	var::Vector<Point> find_final_fill_points(const Bitmap & bitmap,
+			var::Vector<var::Vector<FillPoint> > & fill_point_groups,
+			const var::Vector<var::Vector<FillPoint> > & negative_fill_point_groups
 			);
 
 	sg_size_t get_y_fill_spacing(
