@@ -731,35 +731,6 @@ Point SvgFontManager::calculate_canvas_origin(const Region & bounds, const Area 
 					  (bounds.area().height() + bounds.point().y()) * canvas_dimensions.height() / (bounds.area().height()) );
 }
 
-var::Vector<sg_point_t> SvgFontManager::calculate_pour_points(Bitmap & bitmap, const var::Vector<Point> & fill_points){
-
-	Region region;
-	var::Vector<sg_point_t> result;
-
-	region = bitmap.get_viewable_region();
-
-	printer().open_object("region");
-	printer() << region;
-	printer().close_object();
-
-	for(const auto & p: fill_points){
-		if( bitmap.get_pixel(p) == 0 ){
-			bitmap.draw_pour(p, region);
-			result.push_back(p);
-		}
-	}
-	for(u32 i=0; i < fill_points.count(); i++){
-		Point p = fill_points.at(i);
-		if( bitmap.get_pixel(p) == 0 ){
-			bitmap.draw_pour(p, region);
-			result.push_back(p);
-		}
-	}
-
-	return result;
-
-}
-
 var::Vector<FillPoint> SvgFontManager::find_fill_point_candidates(
 		const Bitmap & bitmap,
 		const Region & region,
@@ -875,7 +846,6 @@ var::Vector<var::Vector<FillPoint>> SvgFontManager::group_fill_point_candidates(
 			active_region = bitmap.calculate_active_region();
 			fill_bitmap.draw_pour(fill_point.point(), fill_bitmap.region());
 			pour_active_region = bitmap.calculate_active_region();
-
 
 			fill_point.set_group(group_count);
 			printer().open_object(
@@ -995,7 +965,6 @@ var::Vector<Point> SvgFontManager::find_final_fill_points(
 										 );
 					if( group.count() < negative_group.count() ){
 						fill_point.set_group( -1 );
-
 					}
 				}
 			}

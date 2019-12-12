@@ -135,7 +135,6 @@ private:
 	Point calculate_canvas_origin(const Region & bounds, const Area & canvas_dimensions);
 	Point convert_svg_coord(float x, float y, bool is_absolute = true);
 	void fit_icon_to_canvas(Bitmap & bitmap, VectorPath & vector_path, const VectorMap & map);
-	static var::Vector<sg_point_t> calculate_pour_points(Bitmap & bitmap, const var::Vector<Point> & fill_points);
 	static sg_size_t is_fill_point(const Bitmap & bitmap, sg_point_t point, const Region & region);
 	int process_glyph(const JsonObject & glyph);
 	int process_hkern(const JsonObject & kerning);

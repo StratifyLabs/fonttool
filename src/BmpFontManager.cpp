@@ -208,7 +208,7 @@ int BmpFontManager::add_character_to_lists(const bmpfont_char_t & d, const Bmp &
 
 int BmpFontManager::populate_kerning_pair_list_from_bitmap_definition(const File & def){
 
-	def.seek(File::Location(0));
+	def.seek(0);
 
 	String line;
 	while( (line = def.gets()).is_empty() == false ){
