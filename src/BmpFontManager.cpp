@@ -171,7 +171,8 @@ int BmpFontManager::populate_lists_from_bitmap_definition(const File & def, cons
 				sg_font_character.offset_y = bmp_definition.yoffset;
 
 				Bitmap character_bitmap = get_bitmap(bitmap_file, bmp_definition);
-				printer().open_object("loaded character", Printer::DEBUG) << character_bitmap << printer().close();
+				printer().open_object("loaded character", Printer::DEBUG) << character_bitmap;
+				printer().close_object();
 				m_generator.bitmap_list().push_back(character_bitmap);
 
 				sg_font_character.height = character_bitmap.height();
@@ -195,7 +196,8 @@ int BmpFontManager::add_character_to_lists(const bmpfont_char_t & d, const Bmp &
 	sg_font_character.offset_y = d.yoffset;
 
 	Bitmap character_bitmap = get_bitmap(bitmap_file, d);
-	printer().open_object("loaded character", Printer::DEBUG) << character_bitmap << printer().close();
+	printer().open_object("loaded character", Printer::DEBUG) << character_bitmap;
+	printer().close_object();
 	m_generator.bitmap_list().push_back(character_bitmap);
 
 	sg_font_character.height = character_bitmap.height();
@@ -257,7 +259,8 @@ int BmpFontManager::create_color_index(const Bmp & bitmap_file){
 	printer().message("%d colors in bitmap", m_bmp_color_index.count());
 	m_bmp_color_index.sort(Vector<u32>::ascending);
 	printer().set_flags(Printer::PRINT_32 | Printer::PRINT_UNSIGNED);
-	printer().open_object("color index", Printer::DEBUG) << m_bmp_color_index << printer().close();
+	printer().open_object("color index", Printer::DEBUG) << m_bmp_color_index;
+	printer().close_object();
 	return 0;
 }
 
@@ -276,7 +279,10 @@ Bitmap BmpFontManager::get_bitmap(const Bmp & bmp, bmpfont_char_t c){
 	u32 num_colors = 1<< bits_per_pixel();
 	u32 idx;
 
-	Bitmap result(Area(width, height), bits_per_pixel());
+	Bitmap result(
+				Area(width, height),
+				Bitmap::BitsPerPixel(bits_per_pixel())
+				);
 	result.clear();
 
 	for(j=0; j < height; j++){
@@ -300,7 +306,10 @@ Bitmap BmpFontManager::get_bitmap(const Bmp & bmp, bmpfont_char_t c){
 	Region full_height_active_region(Point(active_region.point().x(), 0),
 												Area(active_region.width(), result.height()));
 
-	Bitmap active_result(full_height_active_region.area(), bits_per_pixel());
+	Bitmap active_result(
+				full_height_active_region.area(),
+				Bitmap::BitsPerPixel(bits_per_pixel())
+				);
 
 	active_result.draw_sub_bitmap(Point(0,0), result, full_height_active_region);
 

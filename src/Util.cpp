@@ -11,7 +11,7 @@ void Util::filter(
 
 
 	sg_antialias_filter_t filter;
-	sg_color_t contrast_data[8];
+	u8 contrast_data[8];
 
 	contrast_data[0] = 0;
 	contrast_data[1] = 0;
@@ -45,7 +45,7 @@ void Util::show_icon_file(
 		){
 
 	File icon_file;
-	Printer p;
+	YamlPrinter p;
 	bool is_write_bmp = false;
 	Bitmap bmp_output;
 	if( !output_file.argument().is_empty() ){
@@ -62,7 +62,10 @@ void Util::show_icon_file(
 	}
 
 	Svic icon_collection(input_file.argument());
-	Bitmap canvas(Area(canvas_size, canvas_size));
+	Bitmap canvas(
+				Area(canvas_size, canvas_size),
+				Bitmap::BitsPerPixel(1)
+				);
 
 	canvas.set_bits_per_pixel(bits_per_pixel);
 
@@ -73,7 +76,10 @@ void Util::show_icon_file(
 	Area canvas_downsampled_area;
 	canvas_downsampled_area.set_width( (canvas.width() + downsample_size/2) / downsample_size );
 	canvas_downsampled_area.set_height( (canvas.height() + downsample_size/2) / downsample_size );
-	Bitmap canvas_downsampled(canvas_downsampled_area);
+	Bitmap canvas_downsampled(
+				canvas_downsampled_area,
+				Bitmap::BitsPerPixel(1)
+				);
 	canvas_downsampled.set_bits_per_pixel(bits_per_pixel);
 	VectorMap map(canvas);
 
@@ -111,7 +117,8 @@ void Util::show_icon_file(
 					);
 
 		//filter(canvas_downsampled);
-		p.open_object("icon") << canvas_downsampled << p.close();
+		p.open_object("icon") << canvas_downsampled;
+		p.close_object();
 
 		if( is_write_bmp ){
 			bmp_output.draw_sub_bitmap(
@@ -292,7 +299,8 @@ void Util::show_file_font(
 					Area(
 						length,
 						ff.get_height()
-						)
+						),
+					Bitmap::BitsPerPixel(1)
 					);
 
 		output_bitmap.set_bits_per_pixel(2);

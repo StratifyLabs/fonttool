@@ -287,7 +287,7 @@ int BmpFontGenerator::generate_map_file(
 		Bitmap canvas(
 					Area(character_list().at(i).width,
 						  character_list().at(i).height),
-					bits_per_pixel()
+					Bitmap::BitsPerPixel(bits_per_pixel())
 					);
 		canvas.clear();
 		canvas.draw_sub_bitmap(Point(), master_canvas_list.at(character_list().at(i).canvas_idx),
@@ -481,7 +481,8 @@ int BmpFontGenerator::import_map(const String & map){
 		Vector<String> character_lines;
 		JsonArray character_lines_array = character_object.at("lines").to_array();
 		Bitmap character_bitmap(
-					Area(font_character.width, font_character.height)
+					Area(font_character.width, font_character.height),
+					Bitmap::BitsPerPixel(1)
 					);
 		character_bitmap.clear();
 

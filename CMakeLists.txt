@@ -9,6 +9,7 @@ else()
 endif()
 
 include(${SOS_TOOLCHAIN_CMAKE_PATH}/sos-variables.cmake)
+include(${SOS_TOOLCHAIN_CMAKE_PATH}/sos-sdk.cmake)
 include(${SOS_TOOLCHAIN_CMAKE_PATH}/sos-resolve-build-config.cmake)
 
 if( ${SOS_BUILD_CONFIG} STREQUAL arm )
@@ -22,8 +23,7 @@ endif()
 set(SOS_APP_RAM_SIZE 32768)
 
 #Add sources to the project
-set(SOURCES_PREFIX ${CMAKE_SOURCE_DIR}/src)
-add_subdirectory(src)
+sos_sdk_add_subdirectory(SOS_SOURCELIST src)
 list(APPEND SOS_SOURCELIST ${SOURCES} README.md)
 
 get_filename_component(SOS_NAME ${CMAKE_SOURCE_DIR} NAME)

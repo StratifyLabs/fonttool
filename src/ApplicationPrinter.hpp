@@ -5,10 +5,10 @@
 
 class ApplicationPrinter {
 public:
-	static Printer & printer(){ return m_printer; }
+	static YamlPrinter & printer(){ return m_printer; }
 
 private:
-	static Printer m_printer;
+	static YamlPrinter m_printer;
 };
 
 typedef ApplicationPrinter Ap;

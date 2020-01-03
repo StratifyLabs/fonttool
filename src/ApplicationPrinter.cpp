@@ -1,3 +1,3 @@
 #include "ApplicationPrinter.hpp"
 
-Printer ApplicationPrinter::m_printer;
+YamlPrinter ApplicationPrinter::m_printer;

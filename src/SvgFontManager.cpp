@@ -173,8 +173,10 @@ int SvgFontManager::process_svg_icon(
 		m_aspect_ratio = m_bounds.width() * 1.0f / m_bounds.height();
 		//m_aspect_ratio = 1.0f;
 		m_canvas_dimensions = Area(m_canvas_size, m_canvas_size);
-		printer().open_object("bounds") << m_bounds << printer().close();
-		printer().open_object("Canvas Dimensions") << m_canvas_dimensions << printer().close();
+		printer().open_object("bounds") << m_bounds;
+		printer().close_object();
+		printer().open_object("Canvas Dimensions") << m_canvas_dimensions;
+		printer().close_object();
 	} else {
 		printer().warning("Failed to find bounding box");
 		printer().close_object();
@@ -209,7 +211,8 @@ int SvgFontManager::process_svg_icon(
 				true
 				);
 
-	printer().open_object("canvas size") << canvas.area() << printer().close();
+	printer().open_object("canvas size") << canvas.area();
+	printer().close_object();
 	printer().open_object(
 				"canvas",
 				canvas.area().width() > 128 ?
@@ -285,7 +288,8 @@ int SvgFontManager::process_font(
 	m_bounds = parse_bounds(value.cstring());
 	m_canvas_dimensions = calculate_canvas_dimension(m_bounds, m_canvas_size);
 	m_canvas_origin = calculate_canvas_origin(m_bounds, m_canvas_dimensions);
-	printer().open_object("SVG bounds") << m_bounds << printer().close();
+	printer().open_object("SVG bounds") << m_bounds;
+	printer().close_object();
 
 	m_point_size =
 			1.0f * m_canvas_dimensions.height() * units_per_em / m_bounds.area().height() * SG_MAP_MAX / (SG_MAX);
@@ -499,7 +503,8 @@ int SvgFontManager::process_glyph(const JsonObject & glyph){
 					);
 
 #if 0
-		printer().open_object("origin") << m_canvas_origin << printer().close();
+		printer().open_object("origin") << m_canvas_origin;
+		printer().close_object();
 		canvas.draw_line( Point(m_canvas_origin.x(), 0), Point(m_canvas_origin.x(), canvas.y_max()));
 		canvas.draw_line(Point(0, m_canvas_origin.y()), Point(canvas.x_max(), m_canvas_origin.y()));
 
@@ -512,8 +517,10 @@ int SvgFontManager::process_glyph(const JsonObject & glyph){
 
 
 		Region active_region = canvas.calculate_active_region();
-		Bitmap active_canvas(active_region.area());
-		active_canvas.set_bits_per_pixel(bits_per_pixel());
+		Bitmap active_canvas(
+					active_region.area(),
+					Bitmap::BitsPerPixel(bits_per_pixel())
+					);
 
 		active_canvas.draw_sub_bitmap(
 					sg_point(0,0),
@@ -524,8 +531,10 @@ int SvgFontManager::process_glyph(const JsonObject & glyph){
 		Area downsampled;
 		downsampled.set_width( (active_canvas.width() + m_downsample.width()/2) / m_downsample.width() );
 		downsampled.set_height( (active_canvas.height() + m_downsample.height()/2) / m_downsample.height() );
-		Bitmap active_canvas_downsampled(downsampled);
-		active_canvas_downsampled.set_bits_per_pixel(bits_per_pixel());
+		Bitmap active_canvas_downsampled(
+					downsampled,
+					Bitmap::BitsPerPixel(bits_per_pixel())
+					);
 
 		active_canvas_downsampled.clear();
 		active_canvas_downsampled
@@ -739,8 +748,12 @@ var::Vector<FillPoint> SvgFontManager::find_fill_point_candidates(
 		){
 	var::Vector<FillPoint> result;
 
-	Bitmap debug_bitmap(bitmap.area());
-	debug_bitmap.set_bits_per_pixel(4);
+	Bitmap debug_bitmap(
+				bitmap.area(),
+				Bitmap::BitsPerPixel(bits_per_pixel())
+				);
+	//debug_bitmap.set_bits_per_pixel(4);
+
 	debug_bitmap.clear();
 	debug_bitmap.set_pen( Pen().set_color(1) );
 	debug_bitmap.draw_bitmap(Point(0,0), bitmap);
@@ -837,7 +850,10 @@ var::Vector<var::Vector<FillPoint>> SvgFontManager::group_fill_point_candidates(
 	for(u32 i=0; i < fill_points.count(); i++){
 		FillPoint & fill_point = fill_points.at(i);
 		if( fill_point.group() < 0 ){
-			Bitmap fill_bitmap(bitmap.area());
+			Bitmap fill_bitmap(
+						bitmap.area(),
+						Bitmap::BitsPerPixel(1)
+						);
 			Region active_region;
 			Region pour_active_region;
 			fill_bitmap.clear();
@@ -948,7 +964,10 @@ var::Vector<Point> SvgFontManager::find_final_fill_points(
 	//figure out overlap between negative and positive groups -- mark fill group with neg group
 	for(auto & group: fill_point_groups){
 		for(const auto & negative_group: negative_fill_point_groups){
-			Bitmap fill_bitmap(bitmap.area());
+			Bitmap fill_bitmap(
+						bitmap.area(),
+						Bitmap::BitsPerPixel(1)
+						);
 			fill_bitmap.clear();
 			fill_bitmap.draw_bitmap(Point(0,0), bitmap);
 			fill_bitmap.draw_pour(negative_group.at(0).point(), fill_bitmap.region());
@@ -1256,7 +1275,8 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::convert_svg_path(
 
 		vector_path << elements << canvas.get_viewable_region();
 		canvas.clear();
-		printer().open_object("vector path", Printer::DEBUG) << vector_path << printer().close();
+		printer().open_object("vector path", Printer::DEBUG) << vector_path;
+		printer().close_object();
 		canvas.set_pen( Pen().set_color(0xffffffff) );
 		sgfx::Vector::draw(canvas, vector_path, map);
 
@@ -1272,7 +1292,10 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::convert_svg_path(
 
 		Region active_region = canvas.calculate_active_region();
 
-		Bitmap active_bitmap( active_region.area() );
+		Bitmap active_bitmap(
+					active_region.area(),
+					Bitmap::BitsPerPixel(1)
+					);
 		active_bitmap.clear();
 		active_bitmap.draw_sub_bitmap(Point(), canvas, active_region);
 	}

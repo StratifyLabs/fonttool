@@ -9,6 +9,7 @@
 #include "Util.hpp"
 #include "BmpFontManager.hpp"
 #include "SvgFontManager.hpp"
+#include "ThemeManager.hpp"
 #include "ApplicationPrinter.hpp"
 
 void show_usage(const Cli & cli);
@@ -74,6 +75,11 @@ int main(int argc, char * argv[]){
 		Ap::printer().message("using 4 pixel grid pour size");
 		downsample_size = "4";
 	}
+
+	bool is_theme = cli.get_option(
+				"theme",
+				Cli::Description("input should be a json file with a theme --theme=true")
+				) == "true";
 
 	bool is_icon = cli.get_option(
 				"icon",
@@ -197,7 +203,7 @@ int main(int argc, char * argv[]){
 
 	if( action == "convert" ){
 
-		Ap::printer().message("convering");
+		Ap::printer().message("converting");
 		//input is a bmp, svg or map file
 		if( input.is_empty() || input == "true" ){
 			Ap::printer().error("input file or directory must be specified with --input=<path>");
@@ -243,16 +249,28 @@ int main(int argc, char * argv[]){
 			}
 		} else if( input_suffix == "json" ){
 			//map file input
-			Ap::printer().message("generating sbf font from map file");
-			BmpFontGenerator bmp_font_generator;
-			if( bmp_font_generator.import_map(input) == 0 ){
 
-				if( File::get_info(output).is_directory() ){
-					output << "/" << FileInfo::base_name(input);
-				}
+			if( is_theme ){
+				ThemeManager theme_manager;
+				theme_manager.import(
+							File::SourcePath(input),
+							File::DestinationPath(output),
+							bits_per_pixel.to_integer()
+							);
 
-				if( bmp_font_generator.generate_font_file(output) < 0 ){
-					return 1;
+			} else {
+
+				Ap::printer().message("generating sbf font from map file");
+				BmpFontGenerator bmp_font_generator;
+				if( bmp_font_generator.import_map(input) == 0 ){
+
+					if( File::get_info(output).is_directory() ){
+						output << "/" << FileInfo::base_name(input);
+					}
+
+					if( bmp_font_generator.generate_font_file(output) < 0 ){
+						return 1;
+					}
 				}
 			}
 		} else if( input_suffix == "bmp" ){
