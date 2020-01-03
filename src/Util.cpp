@@ -297,20 +297,20 @@ void Util::show_file_font(
 
 		Bitmap output_bitmap(
 					Area(
-						length,
+						length+4,
 						ff.get_height()
 						),
-					Bitmap::BitsPerPixel(1)
+					Bitmap::BitsPerPixel(2)
 					);
 
-		output_bitmap.set_bits_per_pixel(2);
 
-		output_bitmap.set_pen( Pen().set_color(3) );
+		output_bitmap << Pen().set_color(3).set_zero_transparent();
+
 		ff.draw(ascii_characters,
-				  output_bitmap,
-				  Point(0,0)
-				  );
+					output_bitmap,
+					Point(2,0));
 
+		printer().debug("apply filter");
 		filter(output_bitmap);
 
 		Bmp::save(
