@@ -478,7 +478,6 @@ int BmpFontGenerator::import_map(const String & map){
 		font_character.offset_y = character_object.at("offsetY").to_integer();
 
 		u32 line_padding = character_object.at("linePadding").to_integer();
-		Vector<String> character_lines;
 		JsonArray character_lines_array = character_object.at("lines").to_array();
 		Bitmap character_bitmap(
 					Area(font_character.width, font_character.height),

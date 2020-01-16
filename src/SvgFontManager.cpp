@@ -98,10 +98,19 @@ int SvgFontManager::process_icons(
 					).to_object();
 
 		if( m_is_output_json ){
-			Reference( JsonDocument().stringify(top) ).save(
-						FileInfo::no_suffix(input_file) + ".json",
+			String json_output_path = FileInfo::no_suffix(input_file) + ".json";
+
+			if( Reference( JsonDocument().stringify(top) ).save(
+						json_output_path,
 						Reference::IsOverwrite(true)
-						);
+						) < 0 ){
+				printer().error("Failed to save JSON version of file at " +
+									 json_output_path
+									 );
+				return -1;
+			} else {
+				printer().info("JSON of SVG saved to " + json_output_path);
+			}
 		}
 
 		JsonObject svg_icon = top.at("svg").to_object();
@@ -242,6 +251,22 @@ int SvgFontManager::process_font(
 				JsonDocument::XmlFilePath(source_file_path.argument())
 				).to_object();
 
+	if( m_is_output_json ){
+		String json_output_path = FileInfo::no_suffix(source_file_path.argument()) + ".json";
+
+		if( Reference( JsonDocument().stringify(font_object) ).save(
+					json_output_path,
+					Reference::IsOverwrite(true)
+					) < 0 ){
+			printer().error("Failed to save JSON version of file at " +
+								 json_output_path
+								 );
+			return -1;
+		} else {
+			printer().info("JSON of SVG saved to " + json_output_path);
+		}
+	}
+
 
 	JsonObject svg_object = font_object.at("svg").to_object();
 
@@ -260,6 +285,7 @@ int SvgFontManager::process_font(
 	JsonObject defs = svg_object.at("defs").to_object();
 	JsonObject font = defs.at("font").to_object();
 	JsonArray glyphs = font.at("glyph").to_array();
+	JsonArray hkerns = font.at("hkern").to_array();
 	JsonObject font_face = font.at("font-face").to_object();
 	JsonObject missing_glyph = font.at("missing-glyph").to_object();
 
@@ -306,13 +332,22 @@ int SvgFontManager::process_font(
 	for(j=0; j < glyphs.count();j++){
 		//d is the path
 		JsonObject glyph = glyphs.at(j).to_object();
-		//if( name == "glyph" ){
+		printer().open_object("glyph", Printer::level_debug);
+		printer() << glyph;
+		printer().close_object();
 		process_glyph(glyph);
-		//} else if( name == "hkern" ){
-		//	JsonObject kerning = glyphs.at(j).to_object().at("attributes").to_object();
-		//	process_hkern(kerning);
-		//}
 	}
+
+	for(j=0; j < hkerns.count();j++){
+		//d is the path
+		JsonObject hkern = hkerns.at(j).to_object();
+		printer().open_object("hkern", Printer::level_debug);
+		printer() << hkern;
+		printer().close_object();
+		process_hkern(hkern);
+	}
+
+
 
 	String output_name =
 			destination_directory_path.argument() + "/" +
@@ -329,6 +364,27 @@ int SvgFontManager::process_font(
 		m_bmp_font_generator.set_map_output_file(map_file);
 	}
 
+	//check for missing characters
+	bool is_missing = false;
+	for(const auto c: character_set()){
+		bool is_found = false;
+		for(const auto & from_list: m_bmp_font_generator.character_list()){
+			if( c == from_list.id ){
+				is_found = true;
+				break;
+			}
+		}
+
+		if( is_found == false ){
+			is_missing = true;
+			printer().error("Required character %c not found", c);
+		}
+	}
+
+	if( is_missing ){
+		return -1;
+	}
+
 	m_bmp_font_generator.generate_font_file(output_name);
 	printer().message("Created %s", output_name.cstring());
 	return 0;
@@ -343,8 +399,8 @@ int SvgFontManager::process_hkern(const JsonObject & kerning){
 		String first_string;
 		String second_string;
 
-		first_string = kerning.at("u1").to_string();
-		if( first_string == "<invalid>" || first_string.length() != 1 ){
+		first_string = kerning.at("@u1").to_string();
+		if( first_string.is_empty() || first_string.length() != 1 ){
 			return 0;
 		}
 
@@ -352,8 +408,8 @@ int SvgFontManager::process_hkern(const JsonObject & kerning){
 			return 0;
 		}
 
-		second_string = kerning.at("u2").to_string();
-		if( second_string == "<invalid>" || second_string.length() != 1 ){
+		second_string = kerning.at("@u2").to_string();
+		if( second_string.is_empty() || second_string.length() != 1 ){
 			return 0;
 		}
 
@@ -364,11 +420,15 @@ int SvgFontManager::process_hkern(const JsonObject & kerning){
 		first = first_string.at(0);
 		second = second_string.at(0);
 
+		printer().message(
+					"adding kerning for %c to %c",
+					first, second
+					);
 		sg_font_kerning_pair_t kerning_pair;
 		kerning_pair.unicode_first = first;
 		kerning_pair.unicode_second = second;
 
-		s16 specified_kerning = kerning.at("k").to_integer();
+		s16 specified_kerning = kerning.at("@k").to_integer();
 		int kerning_sign;
 		if( specified_kerning < 0 ){
 			kerning_sign = -1;
@@ -447,9 +507,16 @@ int SvgFontManager::process_glyph(const JsonObject & glyph){
 				}
 			}
 
-			if( (glyph_name == "quotesinglbase") || (glyph_name == "quotedbl") ){
+			if( glyph_name == "quotedbl" ){
 				if( character_set().find("\"") != String::npos ){
 					ascii_value = '"';
+					is_in_character_set = true;
+				}
+			}
+
+			if( glyph_name == "quotesinglbase"  ){
+				if( character_set().find("'") != String::npos ){
+					ascii_value = '\'';
 					is_in_character_set = true;
 				}
 			}
@@ -473,6 +540,12 @@ int SvgFontManager::process_glyph(const JsonObject & glyph){
 	}
 
 	if( is_in_character_set ){
+
+		for(const auto & entry: m_bmp_font_generator.character_list()){
+			if( entry.id == ascii_value ){
+				return 0;
+			}
+		}
 
 		if( !glyph_name.is_empty() ){
 			printer().message("Glyph Name: %s", glyph_name.cstring());
@@ -568,7 +641,7 @@ int SvgFontManager::process_glyph(const JsonObject & glyph){
 
 #if !SHOW_ORIGIN
 		if( m_is_show_canvas ){
-			printer().open_object(String().format("active character-%s", unicode.cstring()));
+			printer().open_object(String().format("active character-%s (%c)", unicode.cstring(), ascii_value));
 			{
 				printer() << active_region;
 				printer() << active_canvas;
@@ -586,7 +659,10 @@ int SvgFontManager::process_glyph(const JsonObject & glyph){
 			}
 		}
 #endif
-
+		if( character.id == '"' ){
+			printer().info("-------------Double Quote added-----------\n");
+			//exit(1);
+		}
 
 	}
 	return 0;
@@ -895,9 +971,9 @@ var::Vector<var::Vector<FillPoint>> SvgFontManager::group_fill_point_candidates(
 		result.push_back(group_list);
 	}
 
-	printer().message("%d == %d fill point groups", result.count(), group_count);
+	printer().debug("%d == %d fill point groups", result.count(), group_count);
 	for(const auto & group: result){
-		printer().message("group has %d points", group.count());
+		printer().debug("group has %d points", group.count());
 	}
 	return result;
 
@@ -961,17 +1037,59 @@ var::Vector<Point> SvgFontManager::find_final_fill_points(
 	var::Vector<Point> result;
 
 
-	//figure out overlap between negative and positive groups -- mark fill group with neg group
+	PRINTER_TRACE(printer(), "figure out overlap between negative and positive groups -- mark fill group with neg group");
 	for(auto & group: fill_point_groups){
+		PRINTER_TRACE(printer(),
+						  String().format(
+							  "looking at group with %d points",
+							  group.count())
+						  );
 		for(const auto & negative_group: negative_fill_point_groups){
+			PRINTER_TRACE(printer(),
+							  String().format(
+								  "create fill bitmap with area %dx%d",
+								  bitmap.width(), bitmap.height()
+								  )
+							  );
+
 			Bitmap fill_bitmap(
 						bitmap.area(),
 						Bitmap::BitsPerPixel(1)
 						);
-			fill_bitmap.clear();
-			fill_bitmap.draw_bitmap(Point(0,0), bitmap);
-			fill_bitmap.draw_pour(negative_group.at(0).point(), fill_bitmap.region());
 
+			PRINTER_TRACE(printer(),
+							  String().format(
+								  "looking at pour point %d,%d",
+								  negative_group.at(0).point().x(),
+								  negative_group.at(0).point().y()
+								  )
+							  );
+
+			fill_bitmap.clear();
+			PRINTER_TRACE(printer(), "draw bitmap");
+			fill_bitmap.draw_bitmap(Point(0,0), bitmap);
+			PRINTER_TRACE(printer(),
+							  String().format(
+								  "draw pour %d,%d in region %d,%d %dx%d -> %p",
+								  negative_group.at(0).point().x(),
+								  negative_group.at(0).point().y(),
+								  fill_bitmap.region().x(),
+								  fill_bitmap.region().y(),
+								  fill_bitmap.region().width(),
+								  fill_bitmap.region().height(),
+								  fill_bitmap.data()
+								  )
+							  );
+
+			fill_bitmap.draw_pour(
+						negative_group.at(0).point(),
+						fill_bitmap.region()
+						);
+
+			PRINTER_TRACE(
+						printer(),
+						"check fill points in group"
+						);
 			for(auto & fill_point: group){
 				if( fill_bitmap.get_pixel(fill_point.point()) != 0 ){
 					printer().debug("%d:%d,%d overlaps with negative group %d (%d > %d)",
@@ -1031,6 +1149,7 @@ var::Vector<Point> SvgFontManager::find_all_fill_points(
 		sg_size_t grid
 		){
 
+	PRINTER_TRACE(printer(), "find candidates");
 	var::Vector<FillPoint> candidates
 			= find_fill_point_candidates(
 				bitmap,
@@ -1039,6 +1158,7 @@ var::Vector<Point> SvgFontManager::find_all_fill_points(
 				false
 				);
 
+	PRINTER_TRACE(printer(), "find negative candidates");
 	var::Vector<FillPoint> negative_candidates
 			= find_fill_point_candidates(
 				bitmap,
@@ -1047,18 +1167,21 @@ var::Vector<Point> SvgFontManager::find_all_fill_points(
 				true
 				);
 
+	PRINTER_TRACE(printer(), "group candidates");
 	var::Vector<Vector<FillPoint>> grouped_candidates
 			= group_fill_point_candidates(
 				bitmap,
 				candidates
 				);
 
+	PRINTER_TRACE(printer(), "group negative candidates");
 	var::Vector<Vector<FillPoint>> negative_grouped_candidates
 			= group_fill_point_candidates(
 				bitmap,
 				negative_candidates
 				);
 
+	PRINTER_TRACE(printer(), "find final fill points");
 	var::Vector<Point> fill_points = find_final_fill_points(
 				bitmap,
 				grouped_candidates,
@@ -1238,7 +1361,8 @@ var::Vector<sg_vector_path_description_t> SvgFontManager::convert_svg_path(
 					.set_fill(true)
 					);
 
-		VectorMap map(canvas);
+		VectorMap map;
+		map.calculate_for_bitmap(canvas);
 		sgfx::VectorPath vector_path;
 		vector_path << elements << canvas.get_viewable_region();
 

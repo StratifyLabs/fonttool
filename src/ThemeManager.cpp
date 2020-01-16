@@ -17,6 +17,14 @@ var::Vector<var::String> ThemeManager::get_styles() const {
    result.push_back("success");
    result.push_back("warning");
    result.push_back("danger");
+   result.push_back("outlineDark");
+   result.push_back("outlineLight");
+   result.push_back("outlineBrandPrimary");
+   result.push_back("outlineBrandSecondary");
+   result.push_back("outlineInfo");
+   result.push_back("outlineSuccess");
+   result.push_back("outlineWarning");
+   result.push_back("outlineDanger");
    return result;
 }
 
@@ -30,6 +38,14 @@ var::String ThemeManager::get_style_name(enum Theme::style value){
       case Theme::style_success: return "success";
       case Theme::style_warning: return "warning";
       case Theme::style_danger: return "danger";
+      case Theme::style_outline_dark: return "outlineDark";
+      case Theme::style_outline_light: return "outlineLight";
+      case Theme::style_outline_brand_primary: return "outlineBrandPrimary";
+      case Theme::style_outline_brand_secondary: return "outlineBrandSecondary";
+      case Theme::style_outline_info: return "outlineInfo";
+      case Theme::style_outline_success: return "outlineSuccess";
+      case Theme::style_outline_warning: return "outlineWarning";
+      case Theme::style_outline_danger: return "outlineDanger";
    }
    return "";
 }
@@ -52,6 +68,15 @@ enum sgfx::Theme::style ThemeManager::get_theme_style(const var::String & style_
    if( style_name == "success" ){ return sgfx::Theme::style_success; }
    if( style_name == "warning" ){ return sgfx::Theme::style_warning; }
    if( style_name == "danger" ){ return sgfx::Theme::style_danger; }
+
+   if( style_name == "outlineDark" ){ return sgfx::Theme::style_outline_dark; }
+   if( style_name == "outlineLight" ){ return sgfx::Theme::style_outline_light; }
+   if( style_name == "outlineBrandPrimary" ){ return sgfx::Theme::style_outline_brand_primary; }
+   if( style_name == "outlineBrandSecondary" ){ return sgfx::Theme::style_outline_brand_secondary; }
+   if( style_name == "outlineInfo" ){ return sgfx::Theme::style_outline_info; }
+   if( style_name == "outlineSuccess" ){ return sgfx::Theme::style_outline_success; }
+   if( style_name == "outlineWarning" ){ return sgfx::Theme::style_outline_warning; }
+   if( style_name == "outlineDanger" ){ return sgfx::Theme::style_outline_danger; }
 
    //error
    printer().error("unrecognized style name " + style_name);
@@ -115,9 +140,15 @@ int ThemeManager::import(
       return -1;
    }
 
+   theme_color_t background_color = import_hex_code(
+            configuration.at("background").to_string()
+            );
+
    for(const auto & style: get_styles() ){
       var::JsonObject style_object =
             configuration.at(style).to_object();
+
+      bool is_outline = (style.find("outline") == 0);
 
       printer().message("processing " + style);
       if( style_object.is_valid() == false ){
@@ -125,18 +156,32 @@ int ThemeManager::import(
          return -1;
       }
       var::Array<theme_color_t, 4> colors;
-      colors.at(0) = import_hex_code(
-               style_object.at("background").to_string()
-               );
-      colors.at(1) = import_hex_code(
-               style_object.at("border").to_string()
-               );
-      colors.at(2) = import_hex_code(
-               style_object.at("color").to_string()
-               );
-      colors.at(3) = import_hex_code(
-               style_object.at("text").to_string()
-               );
+
+      colors.at(0) = background_color;
+
+      if( is_outline == false ){
+         colors.at(1) = import_hex_code(
+                  style_object.at("border").to_string()
+                  );
+
+         colors.at(2) = import_hex_code(
+                  style_object.at("color").to_string()
+                  );
+
+         colors.at(3) = import_hex_code(
+                  style_object.at("text").to_string()
+                  );
+      } else {
+         colors.at(1) = import_hex_code(
+                  style_object.at("color").to_string()
+                  );
+
+         colors.at(2) = background_color;
+
+         colors.at(3) = import_hex_code(
+                  style_object.at("color").to_string()
+                  );
+      }
 
       set_color(
                get_theme_style(style),
@@ -144,22 +189,27 @@ int ThemeManager::import(
                colors
                );
 
-      colors.at(0) =
-            calculate_highlighted(import_hex_code(
-                                     style_object.at("background").to_string()
-                                     ));
-      colors.at(1) =
-            calculate_highlighted(import_hex_code(
-                                     style_object.at("border").to_string()
-                                     ));
-      colors.at(2) =
-            calculate_highlighted(import_hex_code(
-                                     style_object.at("color").to_string()
-                                     ));
-      colors.at(3) =
-            calculate_highlighted(import_hex_code(
-                                     style_object.at("text").to_string()
-                                     ));
+      colors.at(0) = background_color;
+      if( is_outline ){
+         colors.at(1) = import_hex_code(
+                  style_object.at("color").to_string()
+                  );
+         colors.at(2) = import_hex_code(
+                  style_object.at("color").to_string()
+                  );
+         colors.at(3) = background_color;
+
+      } else {
+         colors.at(1) = import_hex_code(
+                  style_object.at("border").to_string()
+                  );
+         colors.at(2) = import_hex_code(
+                  style_object.at("color").to_string()
+                  );
+         colors.at(3) =import_hex_code(
+                  style_object.at("text").to_string()
+                  );
+      }
 
       set_color(
                get_theme_style(style),
@@ -167,22 +217,31 @@ int ThemeManager::import(
                colors
                );
 
-      colors.at(0) =
-            calculate_disabled(import_hex_code(
-                                  style_object.at("background").to_string()
-                                  ));
-      colors.at(1) =
-            calculate_disabled(import_hex_code(
-                                  style_object.at("border").to_string()
-                                  ));
-      colors.at(2) =
-            calculate_disabled(import_hex_code(
-                                  style_object.at("color").to_string()
-                                  ));
-      colors.at(3) =
-            calculate_disabled(import_hex_code(
-                                  style_object.at("text").to_string()
-                                  ));
+      colors.at(0) = background_color;
+      if( is_outline ){
+         colors.at(1) =
+               calculate_disabled(import_hex_code(
+                                     style_object.at("color").to_string()
+                                     ));
+         colors.at(2) = background_color;
+         colors.at(3) =
+               calculate_disabled(import_hex_code(
+                                     style_object.at("color").to_string()
+                                     ));
+      } else {
+         colors.at(1) =
+               calculate_disabled(import_hex_code(
+                                     style_object.at("border").to_string()
+                                     ));
+         colors.at(2) =
+               calculate_disabled(import_hex_code(
+                                     style_object.at("color").to_string()
+                                     ));
+         colors.at(3) =
+               calculate_disabled(import_hex_code(
+                                     style_object.at("text").to_string()
+                                     ));
+      }
 
       set_color(
                get_theme_style(style),
@@ -206,10 +265,13 @@ void ThemeManager::set_color(
       ){
 
    var::Vector<u16> colors( m_theme.color_count() );
-   printer().debug(String().format(
-                      "theme palette has %d colors",
-                      colors.count()
-                      ));
+   printer().debug(
+            String().format(
+               "theme palette has %d colors",
+               colors.count()
+               )
+            );
+
    for(size_t first = 0; first < base_colors.count(); first++){
       for(size_t second = 0; second < base_colors.count(); second++){
          size_t offset = first*4 + second;
@@ -247,14 +309,24 @@ u16 ThemeManager::mix(const theme_color_t & first, const theme_color_t & second)
                             second.red, second.green, second.blue,
                             red, green, blue,
                             rgb
-                   ));
+                            ));
    return rgb;
 }
 
-ThemeManager::theme_color_t ThemeManager::calculate_highlighted(const theme_color_t & color){
-   return color;
+ThemeManager::theme_color_t ThemeManager::calculate_highlighted(
+      const theme_color_t & color
+      ){
+   theme_color_t result;
+   result.red = color.red / 4;
+   result.green = color.green / 4;
+   result.blue = color.blue / 4;
+   return result;
 }
 
 ThemeManager::theme_color_t ThemeManager::calculate_disabled(const theme_color_t & color){
-   return color;
+   theme_color_t result;
+   result.red = 255 - color.red / 4;
+   result.green = 255 - color.green / 4;
+   result.blue = 255 - color.blue / 4;
+   return result;
 }

@@ -81,7 +81,6 @@ void Util::show_icon_file(
 				Bitmap::BitsPerPixel(1)
 				);
 	canvas_downsampled.set_bits_per_pixel(bits_per_pixel);
-	VectorMap map(canvas);
 
 	p.message("%d icons in collection", icon_collection.count());
 
@@ -104,6 +103,9 @@ void Util::show_icon_file(
 		vector_path << canvas.get_viewable_region();
 		canvas.clear();
 		canvas.set_pen( Pen().set_color((u32)-1) );
+
+		VectorMap map;
+		map.calculate_for_bitmap(canvas);
 
 		sgfx::Vector::draw(
 					canvas,

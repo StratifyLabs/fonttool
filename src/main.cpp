@@ -148,6 +148,7 @@ int main(int argc, char * argv[]){
 			Ap::printer().key("overwrite", is_overwrite ? "true" : "false");
 			Ap::printer().key("characters", characters.is_empty() ? "<ascii>" : characters.cstring() );
 			Ap::printer().key("bitsPerPixel", bits_per_pixel);
+			Ap::printer().key("json", is_json ? "true" : "false");
 			Ap::printer().close_object();
 		}
 	}
