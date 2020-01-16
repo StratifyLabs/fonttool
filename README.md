@@ -16,7 +16,7 @@ TTF fonts can be converted to svg using an online converter. The resulting svg's
 Use `--action=show` to view fonts and icons.
 
 ```
-fonttool --action=show --input=assets/OpenSansCondensed-Light-15.sbf
+fonttool --action=show --input=assets/opensansc-l-15.sbf
 fonttool --action=show --input=assets/icons.svic
 ```
 
@@ -45,24 +45,24 @@ Font input files must be in svg format. TTF files can be converted to SVG using 
 Once you have a svg font file use:
 
 ```
-fonttool --action=convert --input=fonts/OpenSansCondensed-Light.svg --output=assets
+fonttool --action=convert --input=fonts/opensansc-l.svg --output=assets
 ```
 
-![Open Sans 40pt](examples/OpenSansCondensed-Light-40.jpg)
+![Open Sans 40pt](examples/opensansc-l-40.jpg)
 
 ### Font Maps
 
 When generating a font, you can generate a map file that is human editable to fine tune the font.
 
 ```
-fonttool --action=convert --input=fonts/OpenSansCondensed-Light.svg --output=assets --map
+fonttool --action=convert --input=fonts/opensansc-l.svg --output=assets --map
 ```
 
 Once the editing is done, you can generate a font from the map file.
 
 ```
-fonttool --action=convert --input=assets/OpenSansCondensed-Light-15-map.json --output=assets
-fonttool --action=show --input=assets/OpenSansCondensed-Light-15-map.sbf
+fonttool --action=convert --input=assets/opensansc-l-15-map.json --output=assets
+fonttool --action=show --input=assets/opensansc-l-15-map.sbf
 ```
 
 # File Formats
@@ -147,7 +147,7 @@ Fonts:
 
 
 ```
-fonttool --action=convert --input=fonts/OpenSansCondensed-Light.svg --output=assets --map
-fonttool --action=show --input=assets/OpenSansCondensed-Light-15.sbf
-fonttool --action=convert --input=assets/OpenSansCondensed-Light-15-map.txt --output=assets
+fonttool --action=convert --input=fonts/opensansc-l.svg --output=assets --map
+fonttool --action=show --input=assets/opensansc-l-15.sbf
+fonttool --action=convert --input=assets/opensansc-l-15-map.txt --output=assets
 ```

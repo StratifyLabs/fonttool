@@ -227,7 +227,7 @@ int BmpFontGenerator::generate_map_file(
 					JsonInteger(kerning_pair_list().at(i).unicode_first)
 					);
 		kerning_object.insert(
-					"unicodeSeconds",
+					"unicodeSecond",
 					JsonInteger(kerning_pair_list().at(i).unicode_second)
 					);
 
