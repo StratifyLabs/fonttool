@@ -9,7 +9,6 @@
 #include "Util.hpp"
 #include "BmpFontManager.hpp"
 #include "SvgFontManager.hpp"
-#include "ThemeManager.hpp"
 #include "ApplicationPrinter.hpp"
 
 void show_usage(const Cli & cli);
@@ -250,30 +249,19 @@ int main(int argc, char * argv[]){
 			}
 		} else if( input_suffix == "json" ){
 			//map file input
+			Ap::printer().message("generating sbf font from map file");
+			BmpFontGenerator bmp_font_generator;
+			if( bmp_font_generator.import_map(input) == 0 ){
 
-			if( is_theme ){
-				ThemeManager theme_manager;
-				theme_manager.import(
-							File::SourcePath(input),
-							File::DestinationPath(output),
-							bits_per_pixel.to_integer()
-							);
+				if( File::get_info(output).is_directory() ){
+					output << "/" << FileInfo::base_name(input);
+				}
 
-			} else {
-
-				Ap::printer().message("generating sbf font from map file");
-				BmpFontGenerator bmp_font_generator;
-				if( bmp_font_generator.import_map(input) == 0 ){
-
-					if( File::get_info(output).is_directory() ){
-						output << "/" << FileInfo::base_name(input);
-					}
-
-					if( bmp_font_generator.generate_font_file(output) < 0 ){
-						return 1;
-					}
+				if( bmp_font_generator.generate_font_file(output) < 0 ){
+					return 1;
 				}
 			}
+
 		} else if( input_suffix == "bmp" ){
 
 			Ap::printer().message(

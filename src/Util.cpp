@@ -135,6 +135,7 @@ void Util::show_icon_file(
 
 	}
 
+#if 0
 	if( is_write_bmp ){
 
 		Palette bmp_pallete;
@@ -150,6 +151,7 @@ void Util::show_icon_file(
 					bmp_pallete
 					);
 	}
+#endif
 
 }
 
@@ -180,14 +182,14 @@ void Util::show_file_font(
 		IsDetails is_details
 		){
 
-	FileFont ff;
-	Ap::printer().info("Show font %s", input_file.argument().cstring());
+	File f;
 
-	if( ff.set_file(input_file.argument()) < 0 ){
+	if( f.open(input_file.argument(), OpenFlags::read_only()) < 0 ){
 		printf("Failed to open font %s", input_file.argument().cstring());
-		perror("Open failed");
 		return;
 	}
+	Font ff(f);
+	Ap::printer().info("Show font %s", input_file.argument().cstring());
 
 	show_font(ff);
 
@@ -314,12 +316,13 @@ void Util::show_file_font(
 
 		printer().debug("apply filter");
 		filter(output_bitmap);
-
+#if 0
 		Bmp::save(
 					output_file.argument(),
 					output_bitmap,
 					Palette().set_bits_per_pixel(2).fill_gradient_gray()
 					);
+#endif
 
 	}
 

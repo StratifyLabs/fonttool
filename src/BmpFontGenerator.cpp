@@ -132,12 +132,8 @@ int BmpFontGenerator::generate_font_file(const String & destination){
 				);
 
 	character_list().sort(
-				[](const void * a, const void * b){
-		const sg_font_char_t * object_a = (const sg_font_char_t*)a;
-		const sg_font_char_t * object_b = (const sg_font_char_t*)b;
-		if( object_a->id < object_b->id ){ return -1; }
-		if( object_a->id > object_b->id ){ return 1; }
-		return 1;
+				[](const sg_font_char_t & a, const sg_font_char_t & b){
+		return a.id < b.id;
 	}
 	);
 

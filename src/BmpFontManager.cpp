@@ -112,7 +112,11 @@ int BmpFontManager::convert_font(const String & path){
 
 int BmpFontManager::populate_lists_from_font(const var::String & font_path){
 
-	FileFont font(font_path);
+	File f;
+	if( f.open(font_path, OpenFlags::read_only()) < 0 ){
+		return -1;
+	}
+	Font font(f);
 
 	for(u32 i=0; i < font.kerning_pair_count(); i++){
 		m_generator.kerning_pair_list().push_back( font.kerning_pair(i) );

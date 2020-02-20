@@ -7,8 +7,6 @@ set(SOURCES
 	SvgFontManager.hpp
 	BmpFontManager.cpp
 	BmpFontManager.hpp
-	ThemeManager.cpp
-	ThemeManager.hpp
 	BmpFontGenerator.cpp
 	BmpFontGenerator.hpp
 	ApplicationPrinter.cpp
